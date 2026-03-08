@@ -1,0 +1,50 @@
+First Steps Licensing Information
+=================================
+
+This project is licensed under the GNU General Public License v3.0 or later.
+A copy of the license is included in the LICENSE file.
+
+This project relies on several third-party components. Their respective licenses are listed below.
+
+Core Dependencies
+-----------------
+
+*   **GTK 4**
+    *   License: LGPL-2.1-or-later
+    *   Copyright: The GTK Development Team
+    *   Website: https://www.gtk.org/
+
+*   **Libadwaita**
+    *   License: LGPL-2.1-or-later
+    *   Copyright: The GNOME Project
+    *   Website: https://gnome.pages.gitlab.gnome.org/libadwaita/
+
+*   **PyGObject (Python GTK/GLib/GObject Bindings)**
+    *   License: LGPL-2.1-or-later
+    *   Copyright: The PyGObject Development Team
+    *   Website: https://pygobject.gnome.org/
+
+
+System Tools & Utilities (Invoked via Command Line)
+---------------------------------------------------
+
+First Steps interacts with the following standard system utilities. These are not bundled with the application but are expected to be present on the target system (Zorin OS 18 / Ubuntu 24.04-based systems).
+
+*   **apt-get**: GNU General Public License
+*   **dpkg**: GNU General Public License
+*   **flatpak**: LGPL-2.1-or-later
+*   **git**: GNU General Public License v2
+*   **power-profiles-daemon**: GNU General Public License v3.0 or later
+*   **systemd (logind)**: LGPL-2.1-or-later
+*   **timeshift**: GNU General Public License v3.0
+*   **ubuntu-drivers**: GNU General Public License v3.0
+*   **ufw (Uncomplicated Firewall)**: GNU General Public License v3.0
+
+
+Bundled Assets
+--------------
+
+*   **Application Icon (io.github.firststeps.svg)**
+    *   License: GPL-3.0-or-later
+    *   Copyright: 2026 First Steps Contributors
+    *   Note: Original work created for this project.
