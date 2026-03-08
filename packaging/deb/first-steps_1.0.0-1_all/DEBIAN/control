@@ -1,0 +1,22 @@
+Package: first-steps
+Version: 1.0.0-1
+Section: admin
+Priority: optional
+Architecture: all
+Depends: python3 (>= 3.10), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, flatpak, policykit-1
+Recommends: ubuntu-drivers-common, timeshift, ufw
+Suggests: gnome-tweaks, bottles
+Installed-Size: 120
+Maintainer: First Steps Contributors <noreply@github.com>
+Homepage: https://github.com/Naftaliro/first-steps
+Description: GTK4 + LibAdwaita onboarding wizard for Zorin OS 18
+ First Steps is a system setup wizard that helps you configure a fresh
+ Linux installation through a clean, checkbox-driven interface.
+ .
+ Features include one-click codec installation, Flatpak/Flathub setup
+ with a curated app picker, hardware driver detection, Windows app
+ compatibility via Bottles, automatic backup configuration with
+ Timeshift, power profile management, UFW firewall setup, accessibility
+ settings, and GNOME theme switcher integration.
+ .
+ Designed for Zorin OS 18 and other Ubuntu 24.04-based distributions.
