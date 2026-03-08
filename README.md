@@ -1,14 +1,45 @@
 # First Steps — Onboarding Wizard for Zorin OS
 
-![First Steps Icon](data/icons/hicolor/scalable/apps/io.github.firststeps.svg)
+A GTK4 + LibAdwaita onboarding wizard for Zorin OS 18 and other Ubuntu-based systems. Think of it like a welcome wizard that actually *does things*, not just shows links. Clean, checkbox-driven interface for everything you need on a fresh install.
 
-A GTK4 + LibAdwaita "First Steps" app for Zorin OS 18 and other Ubuntu-based systems. Think of it like a welcome wizard that actually *does things*, not just shows links. This project applies the philosophy of a simple, powerful UI to the full system onboarding problem.
+---
 
-This application provides a clean, checkbox-driven interface to handle essential setup tasks without ever touching a terminal.
+## Installation
+
+### One-Liner Install (Recommended)
+
+Paste this into a terminal and you're done:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Naftaliro/first-steps/main/scripts/install-online.sh | sudo bash
+```
+
+This automatically installs all dependencies, downloads the latest release, and sets everything up. To uninstall: `sudo apt remove first-steps`.
+
+### Download the .deb Package
+
+Grab the `.deb` from the [Releases page](https://github.com/Naftaliro/first-steps/releases/latest) and double-click it, or install from the terminal:
+
+```bash
+wget https://github.com/Naftaliro/first-steps/releases/latest/download/first-steps_1.0.0-1_all.deb
+sudo apt install ./first-steps_1.0.0-1_all.deb
+```
+
+### Install from Source
+
+```bash
+git clone https://github.com/Naftaliro/first-steps.git
+cd first-steps
+sudo ./install.sh
+```
+
+To uninstall: `sudo ./install.sh remove`
+
+---
 
 ## Features
 
-- **Codecs & Media**: One-click install of `ubuntu-restricted-extras`, GStreamer plugins, and DVD support.
+- **Codecs & Media**: One-click install of `ubuntu-restricted-extras`, GStreamer plugins, DVD support, and hardware video acceleration.
 - **Flatpak/Flathub**: Enables the Flathub remote if not already active and provides a curated app picker for popular software like VLC, Bottles, OBS, and more.
 - **Driver Detection**: Wraps the `ubuntu-drivers devices` output and lets the user install recommended drivers with a single click.
 - **Windows App Compatibility**: Installs and pre-configures Bottles, the modern Wine frontend, with a guided first-bottle setup.
@@ -18,41 +49,10 @@ This application provides a clean, checkbox-driven interface to handle essential
 - **Extras**: A collection of useful additions, including:
     - An installer for the [GNOME Theme Switcher](https://github.com/Naftaliro/gnome-theme-switcher)
     - A one-click system update button
-    - Accessibility quick-toggles (Large Text, High Contrast, etc.)
-    - An installer for handy utilities like `gnome-tweaks`, `htop`, and `git`.
+    - Accessibility quick-toggles (Large Text, High Contrast, Large Cursor, Reduce Animations)
+    - An installer for handy utilities like `gnome-tweaks`, `htop`, and `git`
 
-## Installation
-
-1.  **Clone the repository:**
-
-    ```bash
-    git clone https://github.com/Naftaliro/first-steps.git
-    cd first-steps
-    ```
-
-2.  **Run the installer:**
-
-    The script will check for dependencies (like `python3-gi`, `gir1.2-adw-1`, `flatpak`) and install them if missing. It will then install the application files, desktop entry, and icon system-wide.
-
-    ```bash
-    sudo ./install.sh
-    ```
-
-3.  **Launch the application:**
-
-    You can find "First Steps" in your application menu or run it from the terminal:
-
-    ```bash
-    first-steps
-    ```
-
-### Uninstallation
-
-To remove the application, run the install script with the `remove` argument:
-
-```bash
-sudo ./install.sh remove
-```
+---
 
 ## Legal & Licensing
 
@@ -62,19 +62,31 @@ This project is licensed under the **GNU General Public License v3.0 or later**.
 - The application icon is original work created for this project and is also licensed under GPL-3.0-or-later.
 - This project is not affiliated with or endorsed by Zorin Group. All branding is original to "First Steps" to avoid trademark infringement.
 - For a full list of dependencies and their licenses, see the [NOTICE](NOTICE) file.
+- A comprehensive licensing audit is available in [LICENSING-AUDIT.md](LICENSING-AUDIT.md).
 
 ## Development
 
-The application is written in Python using the PyGObject bindings for GTK4 and Libadwaita. The UI is constructed programmatically.
+The application is written in Python using the PyGObject bindings for GTK4 and Libadwaita.
 
-- **Main Application**: `first_steps/app.py`
-- **UI Pages**: `first_steps/pages/`
-- **Privileged Helper**: `scripts/first-steps-helper` (called via `pkexec`)
-- **Polkit Policy**: `data/io.github.firststeps.policy`
-- **Installation Script**: `install.sh`
+| Component | Path |
+|-----------|------|
+| Main Application | `first_steps/app.py` |
+| UI Pages | `first_steps/pages/` |
+| Base Page Class | `first_steps/pages/__init__.py` |
+| Privileged Helper | `scripts/first-steps-helper` |
+| Polkit Policy | `data/io.github.firststeps.policy` |
+| Install Script | `install.sh` |
+| .deb Build Script | `packaging/build-deb.sh` |
+| Online Installer | `scripts/install-online.sh` |
 
-To run from the source tree without installing, execute the main package directory:
+To run from the source tree without installing:
 
 ```bash
-./first_steps
+./first-steps
+```
+
+To rebuild the .deb package:
+
+```bash
+./packaging/build-deb.sh
 ```

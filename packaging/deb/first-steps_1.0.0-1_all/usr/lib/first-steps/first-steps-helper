@@ -1,0 +1,101 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright 2026 First Steps Contributors
+#
+# first-steps-helper — Privileged helper for the First Steps onboarding wizard.
+#
+# This script is called via pkexec to perform system-level operations
+# such as package installation, firewall configuration, and driver setup.
+#
+# Usage: first-steps-helper <action> [args...]
+#
+# Actions:
+#   install-packages <pkg1> [pkg2 ...]   Install apt packages
+#   enable-ufw <script_path>             Run a UFW configuration script
+#   configure-timeshift <config_path>    Copy Timeshift config into place
+#   install-drivers <driver1> [...]      Install hardware drivers
+#   system-update                        Run full system update
+#   run-script <script_path>             Run an arbitrary script (validated)
+
+set -euo pipefail
+
+ACTION="${1:-}"
+shift || true
+
+log() {
+    echo "[first-steps-helper] $*"
+}
+
+error() {
+    echo "[first-steps-helper] ERROR: $*" >&2
+    exit 1
+}
+
+case "$ACTION" in
+    install-packages)
+        [ $# -eq 0 ] && error "No packages specified"
+        log "Installing packages: $*"
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -qq
+        apt-get install -y "$@"
+        log "Package installation complete"
+        ;;
+
+    enable-ufw)
+        SCRIPT="${1:-}"
+        [ -z "$SCRIPT" ] && error "No script path specified"
+        [ ! -f "$SCRIPT" ] && error "Script not found: $SCRIPT"
+        log "Running UFW configuration script: $SCRIPT"
+        bash "$SCRIPT"
+        log "Firewall configuration complete"
+        ;;
+
+    configure-timeshift)
+        CONFIG="${1:-}"
+        [ -z "$CONFIG" ] && error "No config path specified"
+        [ ! -f "$CONFIG" ] && error "Config not found: $CONFIG"
+        log "Installing Timeshift configuration"
+        mkdir -p /etc/timeshift
+        cp "$CONFIG" /etc/timeshift/timeshift.json
+        log "Timeshift configuration installed"
+        ;;
+
+    install-drivers)
+        [ $# -eq 0 ] && error "No drivers specified"
+        log "Installing drivers: $*"
+        apt-get install -y "$@"
+        log "Driver installation complete"
+        ;;
+
+    system-update)
+        log "Running full system update"
+        apt-get update
+        apt-get upgrade -y
+        apt-get autoremove -y
+        log "System update complete"
+        ;;
+
+    run-script)
+        SCRIPT="${1:-}"
+        [ -z "$SCRIPT" ] && error "No script path specified"
+        [ ! -f "$SCRIPT" ] && error "Script not found: $SCRIPT"
+        # Only allow scripts in /tmp/first-steps-* for safety
+        case "$SCRIPT" in
+            /tmp/first-steps-*)
+                log "Running script: $SCRIPT"
+                bash "$SCRIPT"
+                ;;
+            *)
+                error "Script path not allowed: $SCRIPT (must be /tmp/first-steps-*)"
+                ;;
+        esac
+        ;;
+
+    *)
+        error "Unknown action: $ACTION"
+        echo "Usage: first-steps-helper <action> [args...]"
+        echo "Actions: install-packages, enable-ufw, configure-timeshift,"
+        echo "         install-drivers, system-update, run-script"
+        exit 1
+        ;;
+esac
