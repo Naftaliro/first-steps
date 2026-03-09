@@ -2,8 +2,10 @@
 # Copyright 2026 First Steps Contributors
 """Bottles page — install and pre-configure Bottles for Windows app compatibility."""
 
-import gi
+import os
 import subprocess
+
+import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
@@ -27,9 +29,7 @@ class BottlesPage(BasePage):
         )
 
         # ── Status check ─────────────────────────────────────────────
-        self._status_group = self.add_preferences_group(
-            "Bottles Status",
-        )
+        self._status_group = self.add_preferences_group("Bottles Status")
 
         self._status_row = Adw.ActionRow()
         self._status_row.set_title("Bottles")
@@ -80,9 +80,9 @@ class BottlesPage(BasePage):
         )
 
         self._bottle_type = Gtk.StringList.new([
-            "Gaming — Optimized for games (DXVK, VKD3D, GameMode)",
-            "Application — For productivity software",
-            "Custom — Minimal, configure yourself",
+            "Gaming \u2014 Optimized for games (DXVK, VKD3D, GameMode)",
+            "Application \u2014 For productivity software",
+            "Custom \u2014 Minimal, configure yourself",
         ])
 
         self._bottle_dropdown_row = Adw.ComboRow()
@@ -131,6 +131,11 @@ class BottlesPage(BasePage):
                 self._status_row.add_prefix(
                     Gtk.Image.new_from_icon_name("dialog-information-symbolic")
                 )
+        except FileNotFoundError:
+            self._status_row.set_subtitle("Flatpak is not installed")
+            self._status_row.add_prefix(
+                Gtk.Image.new_from_icon_name("dialog-warning-symbolic")
+            )
         except Exception:
             self._status_row.set_subtitle("Could not check Bottles status")
 
@@ -150,36 +155,65 @@ class BottlesPage(BasePage):
         )
 
     def _on_bottles_installed(self, success: bool, output: str) -> None:
-        if success:
-            self._progress_label.set_text("Bottles installed!")
-            self._status_row.set_subtitle("Bottles is installed")
-
-            # Install optional dependencies
-            if self._wine_check.get_active():
-                self._progress_label.set_text("Installing Wine dependencies...")
-                self.run_privileged(
-                    ["apt-get", "install", "-y",
-                     "wine64", "wine32", "libwine",
-                     "fonts-wine", "winetricks"],
-                    success_msg="Installed Wine system dependencies",
-                    callback=self._on_deps_done,
-                )
-            else:
-                self._finish_install()
-
-            if self._gamemode_check.get_active():
-                self.run_privileged(
-                    ["apt-get", "install", "-y", "gamemode"],
-                    success_msg="Installed GameMode",
-                )
-        else:
+        if not success:
             self._progress_label.set_text(f"Installation failed.\n{output[:200]}")
             self._install_btn.set_sensitive(True)
             self._spinner.stop()
             self._spinner.set_visible(False)
+            return
 
-    def _on_deps_done(self, success: bool, output: str) -> None:
-        self._finish_install()
+        self._progress_label.set_text("Bottles installed!")
+        self._status_row.set_subtitle("Bottles is installed")
+
+        # Now install optional deps sequentially (not in parallel)
+        # to avoid multiple pkexec prompts
+        want_wine = self._wine_check.get_active()
+        want_gamemode = self._gamemode_check.get_active()
+
+        if want_wine or want_gamemode:
+            packages = []
+            if want_wine:
+                packages.extend(["wine64", "wine32", "libwine",
+                                 "fonts-wine", "winetricks"])
+            if want_gamemode:
+                packages.append("gamemode")
+
+            self._progress_label.set_text(
+                f"Installing dependencies: {', '.join(packages)}..."
+            )
+
+            # Single privileged call for all deps
+            script_path = "/tmp/first-steps-bottles-deps.sh"
+            script_lines = [
+                "#!/bin/bash",
+                "set -e",
+                "export DEBIAN_FRONTEND=noninteractive",
+                "dpkg --add-architecture i386 2>/dev/null || true",
+                "apt-get update -qq",
+                f"apt-get install -y {' '.join(packages)}",
+            ]
+            try:
+                with open(script_path, "w") as f:
+                    f.write("\n".join(script_lines) + "\n")
+                os.chmod(script_path, 0o755)
+            except Exception as e:
+                self._progress_label.set_text(f"Error: {e}")
+                self._finish_install()
+                return
+
+            desc_parts = []
+            if want_wine:
+                desc_parts.append("Wine system dependencies")
+            if want_gamemode:
+                desc_parts.append("GameMode")
+
+            self.run_privileged(
+                ["bash", script_path],
+                success_msg=f"Installed {' and '.join(desc_parts)}",
+                callback=lambda s, o: self._finish_install(),
+            )
+        else:
+            self._finish_install()
 
     def _finish_install(self) -> None:
         self._spinner.stop()
@@ -189,6 +223,7 @@ class BottlesPage(BasePage):
             "Bottles is ready! You can create a bottle below or launch "
             "Bottles from your application menu."
         )
+        self.show_toast("Bottles installed successfully!")
 
     def _on_create_bottle(self, btn: Gtk.Button) -> None:
         """Launch Bottles — bottle creation is handled by the Bottles GUI."""
@@ -213,6 +248,13 @@ class BottlesPage(BasePage):
             subprocess.Popen(
                 ["flatpak", "run", "com.usebottles.bottles"],
                 start_new_session=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except FileNotFoundError:
+            self._progress_label.set_text(
+                "Could not launch Bottles: flatpak not found.\n"
+                "You can launch it from your application menu."
             )
         except Exception as e:
             self._progress_label.set_text(

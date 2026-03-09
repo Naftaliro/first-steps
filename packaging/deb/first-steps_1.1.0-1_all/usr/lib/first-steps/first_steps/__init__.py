@@ -2,5 +2,5 @@
 # Copyright 2026 First Steps Contributors
 """First Steps — A GTK4 + LibAdwaita onboarding wizard for Zorin OS 18."""
 
-__version__ = "1.0.0"
-__app_id__ = "io.github.firststeps.app"
+__version__ = "1.1.0"
+__app_id__ = "io.github.firststeps"

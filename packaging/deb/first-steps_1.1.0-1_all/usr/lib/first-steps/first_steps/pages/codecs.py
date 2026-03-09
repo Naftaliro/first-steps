@@ -2,8 +2,10 @@
 # Copyright 2026 First Steps Contributors
 """Codecs & Media page — install restricted extras, GStreamer, DVD support."""
 
-import gi
+import os
 import subprocess
+
+import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
@@ -125,16 +127,36 @@ class CodecsPage(BasePage):
         self._spinner.start()
         self._status_label.set_text(f"Installing: {', '.join(selected_names)}...")
 
-        # Build the install command
-        # We use DEBIAN_FRONTEND=noninteractive to auto-accept EULA prompts
-        cmd = [
-            "/usr/bin/env",
-            "DEBIAN_FRONTEND=noninteractive",
-            "apt-get", "install", "-y",
-        ] + packages
+        # Write a helper script that sets DEBIAN_FRONTEND properly.
+        # pkexec strips environment variables, so we must set it inside the script.
+        script_path = "/tmp/first-steps-codecs.sh"
+        script_lines = [
+            "#!/bin/bash",
+            "set -e",
+            "export DEBIAN_FRONTEND=noninteractive",
+            "apt-get update -qq",
+            f"apt-get install -y {' '.join(packages)}",
+        ]
+
+        # If DVD was selected, run dpkg-reconfigure
+        if self._checks["dvd"].get_active():
+            script_lines.append(
+                "dpkg-reconfigure -f noninteractive libdvd-pkg 2>/dev/null || true"
+            )
+
+        try:
+            with open(script_path, "w") as f:
+                f.write("\n".join(script_lines) + "\n")
+            os.chmod(script_path, 0o755)
+        except Exception as e:
+            self._status_label.set_text(f"Error preparing install script: {e}")
+            self._install_btn.set_sensitive(True)
+            self._spinner.stop()
+            self._spinner.set_visible(False)
+            return
 
         self.run_privileged(
-            cmd,
+            ["bash", script_path],
             success_msg=f"Installed codecs: {', '.join(selected_names)}",
             callback=self._on_install_done,
         )
@@ -147,16 +169,9 @@ class CodecsPage(BasePage):
         if success:
             self._status_label.set_text("All selected codecs installed successfully!")
             self._status_label.remove_css_class("dim-label")
-            self._status_label.add_css_class("success")
-
-            # If DVD was selected, run dpkg-reconfigure for libdvd-pkg
-            if self._checks["dvd"].get_active():
-                self.run_privileged(
-                    ["dpkg-reconfigure", "-f", "noninteractive", "libdvd-pkg"],
-                    success_msg="Configured DVD decryption library",
-                )
+            self.show_toast("Codecs installed successfully!")
         else:
+            short_output = output.strip().split("\n")[-3:]  # Last 3 lines
             self._status_label.set_text(
-                f"Installation encountered an issue. Check terminal output.\n{output[:300]}"
+                "Installation encountered an issue:\n" + "\n".join(short_output)
             )
-            self._status_label.add_css_class("error")

@@ -2,8 +2,10 @@
 # Copyright 2026 First Steps Contributors
 """Firewall page — enable and configure UFW with sensible defaults."""
 
-import gi
+import os
 import subprocess
+
+import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
@@ -108,12 +110,15 @@ class FirewallPage(BasePage):
         self.add_navigation_buttons(back_tag="power", next_tag="extras")
 
     def _check_ufw_status(self) -> None:
+        """Check UFW status — ufw status may need root, so try both ways."""
         try:
+            # First try without root (works on some systems)
             result = subprocess.run(
                 ["ufw", "status"],
                 capture_output=True, text=True, timeout=5,
             )
-            output = result.stdout.strip()
+            output = result.stdout.strip() + result.stderr.strip()
+
             if "Status: active" in output:
                 self._status_row.set_subtitle("UFW is active and running")
                 self._status_row.add_prefix(
@@ -125,10 +130,33 @@ class FirewallPage(BasePage):
                 self._status_row.add_prefix(
                     Gtk.Image.new_from_icon_name("security-low-symbolic")
                 )
+            elif "command not found" in output.lower() or result.returncode == 127:
+                self._status_row.set_subtitle("UFW is not installed \u2014 it will be installed")
+                self._status_row.add_prefix(
+                    Gtk.Image.new_from_icon_name("dialog-information-symbolic")
+                )
             else:
-                self._status_row.set_subtitle("UFW status unknown")
+                # Might need root; check if binary exists at least
+                which = subprocess.run(
+                    ["which", "ufw"], capture_output=True, text=True, timeout=5
+                )
+                if which.returncode == 0:
+                    self._status_row.set_subtitle(
+                        "UFW is installed (run status check requires authentication)"
+                    )
+                    self._status_row.add_prefix(
+                        Gtk.Image.new_from_icon_name("dialog-information-symbolic")
+                    )
+                else:
+                    self._status_row.set_subtitle("UFW is not installed \u2014 it will be installed")
+                    self._status_row.add_prefix(
+                        Gtk.Image.new_from_icon_name("dialog-information-symbolic")
+                    )
         except FileNotFoundError:
-            self._status_row.set_subtitle("UFW is not installed — it will be installed")
+            self._status_row.set_subtitle("UFW is not installed \u2014 it will be installed")
+            self._status_row.add_prefix(
+                Gtk.Image.new_from_icon_name("dialog-information-symbolic")
+            )
         except Exception:
             self._status_row.set_subtitle("Could not check firewall status")
 
@@ -153,7 +181,7 @@ class FirewallPage(BasePage):
             "set -e",
             "",
             "# Install UFW if needed",
-            "apt-get install -y ufw",
+            "command -v ufw >/dev/null 2>&1 || apt-get install -y ufw",
             "",
             "# Reset to clean state",
             "ufw --force reset",
@@ -179,7 +207,6 @@ class FirewallPage(BasePage):
         try:
             with open(tmp_script, "w") as f:
                 f.write("\n".join(script_lines) + "\n")
-            import os
             os.chmod(tmp_script, 0o755)
         except Exception as e:
             self._progress_label.set_text(f"Error: {e}")
@@ -211,7 +238,9 @@ class FirewallPage(BasePage):
         if success:
             self._progress_label.set_text("Firewall is now active and configured!")
             self._status_row.set_subtitle("UFW is active and running")
+            self.show_toast("Firewall enabled!")
         else:
+            short = output.strip().split("\n")[-3:]
             self._progress_label.set_text(
-                f"Firewall configuration encountered an issue.\n{output[:300]}"
+                "Firewall configuration encountered an issue:\n" + "\n".join(short)
             )

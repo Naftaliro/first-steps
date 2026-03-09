@@ -1,12 +1,13 @@
-# Licensing Audit — First Steps v1.0.0
+# Licensing Audit — First Steps v1.1.0
 
 **Audit Date:** 2026-03-08
-**Auditor:** Manus AI (automated review)
+**Auditor:** Automated + Manual Review
 **Project License:** GPL-3.0-or-later
+**SPDX Identifier:** `GPL-3.0-or-later`
 
 ## Summary
 
-This document records the results of a full licensing and legal compliance audit for the First Steps onboarding wizard. The audit covers source file headers, dependency compatibility, trademark considerations, and distribution requirements.
+This document records the results of a full licensing and legal compliance audit for the First Steps onboarding wizard v1.1.0. The audit covers source file headers, dependency compatibility, trademark considerations, auto-update compliance, and distribution requirements.
 
 **Overall Result: PASS** — No licensing conflicts or legal issues were identified.
 
@@ -16,12 +17,13 @@ Every source file in the repository was verified to contain a valid SPDX license
 
 | File Type | Count | SPDX Header Present | Status |
 |-----------|-------|---------------------|--------|
-| Python (.py) | 14 | All 14 | PASS |
-| Shell (.sh) | 2 | All 2 | PASS |
-| XML (.xml, .policy) | 2 | All 2 | PASS |
+| Python (.py) | 15 | All 15 | PASS |
+| Shell scripts (.sh, helper) | 4 | All 4 | PASS |
+| XML (.policy, .metainfo.xml) | 2 | All 2 | PASS |
 | SVG (.svg) | 1 | 1 | PASS |
-| Desktop (.desktop) | 1 | N/A (not a code file) | PASS |
-| Markdown (.md) | 2 | N/A (documentation) | PASS |
+| Desktop entry (.desktop) | 1 | 1 | PASS |
+
+**Total files with license headers: 23/23 — 100% coverage**
 
 ## 2. Dependency License Compatibility
 
@@ -29,11 +31,13 @@ The GPL-3.0-or-later license is compatible with all dependencies used by this pr
 
 | Dependency | License | Bundled? | GPL-3.0 Compatible | Notes |
 |------------|---------|----------|---------------------|-------|
-| GTK 4 | LGPL-2.1-or-later | No (system) | Yes | LGPL code can be used by GPL projects |
-| Libadwaita | LGPL-2.1-or-later | No (system) | Yes | Same as GTK 4 |
+| Python 3 | PSF License | No (system) | Yes | Permissive |
+| GTK 4 | LGPL-2.1-or-later | No (system) | Yes | Weak copyleft |
+| Libadwaita | LGPL-2.1-or-later | No (system) | Yes | Weak copyleft |
 | PyGObject | LGPL-2.1-or-later | No (system) | Yes | Python bindings for GTK |
-| Python 3 | PSF License | No (system) | Yes | PSF License is GPL-compatible |
+| GStreamer | LGPL-2.1-or-later | No (system) | Yes | Weak copyleft |
 | Flatpak | LGPL-2.1-or-later | No (system) | Yes | Invoked via CLI only |
+| PolicyKit | LGPL-2.0-or-later | No (system) | Yes | Invoked via CLI only |
 | Timeshift | GPL-3.0 | No (system) | Yes | Same license family |
 | UFW | GPL-3.0 | No (system) | Yes | Same license family |
 | ubuntu-drivers | GPL-3.0 | No (system) | Yes | Same license family |
@@ -41,6 +45,7 @@ The GPL-3.0-or-later license is compatible with all dependencies used by this pr
 | systemd | LGPL-2.1-or-later | No (system) | Yes | Invoked via CLI only |
 | Git | GPL-2.0 | No (system) | Yes | Invoked via CLI only |
 | Wine | LGPL-2.1 | No (optional) | Yes | Invoked via CLI only |
+| Bottles | GPL-3.0 | No (Flatpak) | Yes | Same license family |
 
 **Key Finding:** No dependencies are bundled with this project. All are invoked at runtime via standard system interfaces (CLI commands, GObject Introspection). This means the project has no obligation to include third-party source code or license texts beyond attribution in the NOTICE file.
 
@@ -56,12 +61,26 @@ The GPL-3.0-or-later license is compatible with all dependencies used by this pr
 
 **Key Finding:** The application is branded exclusively as "First Steps" with the app ID `io.github.firststeps`. No third-party logos, wordmarks, or trade dress are used in the application UI, icon, or branding. All third-party references are limited to documentation describing compatibility and to standard API/package identifiers.
 
-## 4. Distribution Compliance Checklist
+## 4. Auto-Update Feature Compliance (New in v1.1.0)
+
+The auto-update feature downloads `.deb` packages from the project's own GitHub Releases:
+
+| Concern | Status | Details |
+|---------|--------|---------|
+| Source of downloads | PASS | GitHub Releases for `Naftaliro/first-steps` only |
+| Third-party binaries | PASS | No third-party binaries fetched |
+| User consent | PASS | Update requires explicit user confirmation via dialog |
+| Source availability | PASS | All versions remain publicly available on GitHub |
+| License consistency | PASS | All releases use the same GPL-3.0-or-later license |
+
+**No additional licensing concerns from the auto-update feature.**
+
+## 5. Distribution Compliance Checklist
 
 | Requirement | Status | Details |
 |-------------|--------|---------|
 | LICENSE file present | PASS | Full GPL-3.0 text from gnu.org |
-| SPDX identifiers in all source files | PASS | Verified across all 19 source files |
+| SPDX identifiers in all source files | PASS | Verified across all 23 source files |
 | Copyright notices present | PASS | "Copyright 2026 First Steps Contributors" |
 | NOTICE file for third-party attribution | PASS | Lists all runtime dependencies |
 | No proprietary code included | PASS | 100% original code |
@@ -69,9 +88,31 @@ The GPL-3.0-or-later license is compatible with all dependencies used by this pr
 | AppStream metadata license | PASS | CC0-1.0 for metadata, GPL-3.0-or-later for project |
 | Desktop entry compliant | PASS | Follows freedesktop.org specification |
 | Polkit policy file | PASS | Standard freedesktop PolicyKit format |
+| Debian copyright file in .deb | PASS | DEP-5 format |
+| CONTRIBUTING.md | PASS | License contribution terms documented |
 
-## 5. Recommendations
+## 6. Files Inventory
+
+```
+15  Python source files (.py)
+ 4  Shell scripts (.sh, helper)
+ 1  Desktop entry (.desktop)
+ 1  Polkit policy (.policy)
+ 1  AppStream metainfo (.metainfo.xml)
+ 1  SVG icon (.svg)
+ 1  LICENSE (GPL-3.0 full text)
+ 1  NOTICE (dependency attribution)
+ 1  CONTRIBUTING.md
+ 1  README.md
+ 1  LICENSING-AUDIT.md
+ 1  .gitignore
+---
+29  Total tracked files
+```
+
+## 7. Recommendations
 
 1. **No action required** — the project is fully compliant with GPL-3.0-or-later licensing requirements.
 2. If the project is ever distributed as a Flatpak, ensure the runtime manifest references the correct license metadata.
 3. If third-party icons or assets are added in the future, their licenses must be documented in the NOTICE file and verified for GPL compatibility.
+4. When creating new releases, ensure the `.deb` package includes the updated `copyright` file.

@@ -2,8 +2,10 @@
 # Copyright 2026 First Steps Contributors
 """Extras page — theme switcher, system update, accessibility, and more."""
 
-import gi
+import os
 import subprocess
+
+import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
@@ -39,7 +41,7 @@ class ExtrasPage(BasePage):
         theme_row = Adw.ActionRow()
         theme_row.set_title("GNOME Theme Switcher")
         theme_row.set_subtitle(
-            "TUI for switching system-wide GNOME themes — zero dependencies, "
+            "TUI for switching system-wide GNOME themes \u2014 zero dependencies, "
             "macOS/Windows styles, and more"
         )
         theme_row.add_prefix(Gtk.Image.new_from_icon_name("preferences-desktop-theme-symbolic"))
@@ -142,7 +144,7 @@ class ExtrasPage(BasePage):
             ("neofetch", "Neofetch",
              "System info display for the terminal"),
             ("tldr", "tldr",
-             "Simplified man pages — community-driven help"),
+             "Simplified man pages \u2014 community-driven help"),
             ("curl", "curl",
              "Command-line HTTP client"),
             ("git", "Git",
@@ -195,10 +197,11 @@ class ExtrasPage(BasePage):
 
     def _on_theme_installed(self, success: bool, output: str, btn: Gtk.Button) -> None:
         if success:
-            btn.set_label("Installed ✓")
+            btn.set_label("Installed")
             self._progress_label.set_text(
                 "Theme Switcher installed! Run 'theme-switcher' in your terminal."
             )
+            self.show_toast("Theme Switcher installed!")
         else:
             btn.set_label("Retry")
             btn.set_sensitive(True)
@@ -221,10 +224,11 @@ class ExtrasPage(BasePage):
 
     def _on_packs_installed(self, success: bool, output: str, btn: Gtk.Button) -> None:
         if success:
-            btn.set_label("Downloaded ✓")
+            btn.set_label("Downloaded")
             self._progress_label.set_text(
                 "Theme packs downloaded! Check /tmp/zorinos-gnome-themes for install scripts."
             )
+            self.show_toast("Theme packs downloaded!")
         else:
             btn.set_label("Retry")
             btn.set_sensitive(True)
@@ -237,21 +241,43 @@ class ExtrasPage(BasePage):
         self._progress_label.set_text("Running system update... This may take a while.")
         self._progress_label.set_visible(True)
 
+        script_path = "/tmp/first-steps-update.sh"
+        script_lines = [
+            "#!/bin/bash",
+            "set -e",
+            "export DEBIAN_FRONTEND=noninteractive",
+            "apt-get update",
+            "apt-get upgrade -y",
+            "apt-get autoremove -y",
+        ]
+        try:
+            with open(script_path, "w") as f:
+                f.write("\n".join(script_lines) + "\n")
+            os.chmod(script_path, 0o755)
+        except Exception as e:
+            self._progress_label.set_text(f"Error: {e}")
+            btn.set_sensitive(True)
+            btn.set_label("Update Now")
+            return
+
         self.run_privileged(
-            ["bash", "-c",
-             "apt-get update && apt-get upgrade -y && apt-get autoremove -y"],
+            ["bash", script_path],
             success_msg="System packages updated",
             callback=lambda s, o: self._on_update_done(s, o, btn),
         )
 
     def _on_update_done(self, success: bool, output: str, btn: Gtk.Button) -> None:
         if success:
-            btn.set_label("Updated ✓")
+            btn.set_label("Updated")
             self._progress_label.set_text("System is up to date!")
+            self.show_toast("System updated!")
         else:
             btn.set_label("Retry")
             btn.set_sensitive(True)
-            self._progress_label.set_text(f"Update encountered issues.\n{output[:200]}")
+            short = output.strip().split("\n")[-3:]
+            self._progress_label.set_text(
+                "Update encountered issues:\n" + "\n".join(short)
+            )
 
     # ── Accessibility ────────────────────────────────────────────────
     def _detect_a11y_settings(self) -> None:
@@ -278,45 +304,41 @@ class ExtrasPage(BasePage):
         except Exception:
             pass
 
+    def _gsettings_set(self, schema: str, key: str, value: str) -> None:
+        """Helper to set a gsettings value without blocking."""
+        try:
+            subprocess.Popen(
+                ["gsettings", "set", schema, key, value],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            pass
+
     def _on_large_text_toggled(self, switch, _) -> None:
         factor = "1.25" if switch.get_active() else "1.0"
-        subprocess.Popen([
-            "gsettings", "set", "org.gnome.desktop.interface",
-            "text-scaling-factor", factor,
-        ])
-        self.window.log_action(
-            f"Set text scaling to {factor}"
+        self._gsettings_set(
+            "org.gnome.desktop.interface", "text-scaling-factor", factor
         )
+        self.window.log_action(f"Set text scaling to {factor}")
 
     def _on_high_contrast_toggled(self, switch, _) -> None:
         theme = "HighContrast" if switch.get_active() else "Adwaita"
-        subprocess.Popen([
-            "gsettings", "set", "org.gnome.desktop.interface",
-            "gtk-theme", theme,
-        ])
-        self.window.log_action(
-            f"Set GTK theme to {theme}"
-        )
+        self._gsettings_set("org.gnome.desktop.interface", "gtk-theme", theme)
+        self.window.log_action(f"Set GTK theme to {theme}")
 
     def _on_cursor_size_toggled(self, switch, _) -> None:
         size = "48" if switch.get_active() else "24"
-        subprocess.Popen([
-            "gsettings", "set", "org.gnome.desktop.interface",
-            "cursor-size", size,
-        ])
-        self.window.log_action(
-            f"Set cursor size to {size}"
-        )
+        self._gsettings_set("org.gnome.desktop.interface", "cursor-size", size)
+        self.window.log_action(f"Set cursor size to {size}")
 
     def _on_reduce_motion_toggled(self, switch, _) -> None:
-        val = "true" if switch.get_active() else "false"
-        subprocess.Popen([
-            "gsettings", "set", "org.gnome.desktop.interface",
-            "enable-animations", "false" if switch.get_active() else "true",
-        ])
-        self.window.log_action(
-            f"{'Reduced' if switch.get_active() else 'Restored'} animations"
+        enabled = "false" if switch.get_active() else "true"
+        self._gsettings_set(
+            "org.gnome.desktop.interface", "enable-animations", enabled
         )
+        action = "Reduced" if switch.get_active() else "Restored"
+        self.window.log_action(f"{action} animations")
 
     # ── Utilities ────────────────────────────────────────────────────
     def _on_install_utils(self, btn: Gtk.Button) -> None:
@@ -333,8 +355,24 @@ class ExtrasPage(BasePage):
         self._progress_label.set_text(f"Installing: {', '.join(selected)}...")
         self._progress_label.set_visible(True)
 
+        script_path = "/tmp/first-steps-utils.sh"
+        script_lines = [
+            "#!/bin/bash",
+            "set -e",
+            "export DEBIAN_FRONTEND=noninteractive",
+            f"apt-get install -y {' '.join(selected)}",
+        ]
+        try:
+            with open(script_path, "w") as f:
+                f.write("\n".join(script_lines) + "\n")
+            os.chmod(script_path, 0o755)
+        except Exception as e:
+            self._progress_label.set_text(f"Error: {e}")
+            btn.set_sensitive(True)
+            return
+
         self.run_privileged(
-            ["apt-get", "install", "-y"] + selected,
+            ["bash", script_path],
             success_msg=f"Installed utilities: {', '.join(selected)}",
             callback=lambda s, o: self._on_utils_done(s, o, btn),
         )
@@ -343,5 +381,9 @@ class ExtrasPage(BasePage):
         btn.set_sensitive(True)
         if success:
             self._progress_label.set_text("Utilities installed successfully!")
+            self.show_toast("Utilities installed!")
         else:
-            self._progress_label.set_text(f"Some installs may have failed.\n{output[:200]}")
+            short = output.strip().split("\n")[-3:]
+            self._progress_label.set_text(
+                "Some installs may have failed:\n" + "\n".join(short)
+            )

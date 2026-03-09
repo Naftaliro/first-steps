@@ -31,12 +31,17 @@ class SummaryPage(BasePage):
             "Everything you set up today:"
         )
 
+        # Track dynamically added rows
+        self._action_rows: list[Adw.ActionRow] = []
+        self._showing_no_actions = False
+
         self._no_actions_row = Adw.ActionRow()
         self._no_actions_row.set_title("No actions completed yet")
         self._no_actions_row.set_subtitle(
             "Go through the wizard pages to configure your system"
         )
         self._actions_group.add(self._no_actions_row)
+        self._showing_no_actions = True
 
         # Refresh button
         refresh_btn = Gtk.Button(label="Refresh Summary")
@@ -45,9 +50,7 @@ class SummaryPage(BasePage):
         self._outer_box.append(refresh_btn)
 
         # Next steps
-        self._next_group = self.add_preferences_group(
-            "Recommended Next Steps",
-        )
+        self._next_group = self.add_preferences_group("Recommended Next Steps")
 
         next_steps = [
             ("dialog-information-symbolic", "Reboot if drivers were installed",
@@ -80,27 +83,25 @@ class SummaryPage(BasePage):
         self.add_navigation_buttons(back_tag="extras")
 
         # Auto-refresh when page becomes visible
-        self.connect("map", lambda _: self._refresh(None))
+        self.connect("map", lambda w: self._refresh(None))
 
     def _refresh(self, btn) -> None:
         """Refresh the list of completed actions."""
+        # Remove previously added action rows
+        for row in self._action_rows:
+            self._actions_group.remove(row)
+        self._action_rows.clear()
+
+        # Remove the "no actions" placeholder if it's showing
+        if self._showing_no_actions:
+            self._actions_group.remove(self._no_actions_row)
+            self._showing_no_actions = False
+
         actions = self.window.get_completed_actions()
-
-        # Remove old rows
-        self._actions_group.remove(self._no_actions_row)
-
-        # Clear any previously added action rows
-        while True:
-            child = self._actions_group.get_first_child()
-            if child is None:
-                break
-            if isinstance(child, (Adw.ActionRow, Gtk.ListBoxRow)):
-                self._actions_group.remove(child)
-            else:
-                break
 
         if not actions:
             self._actions_group.add(self._no_actions_row)
+            self._showing_no_actions = True
             self._status.set_description(
                 "No actions were completed. Go through the wizard to set up your system."
             )
@@ -112,6 +113,7 @@ class SummaryPage(BasePage):
                     Gtk.Image.new_from_icon_name("emblem-ok-symbolic")
                 )
                 self._actions_group.add(row)
+                self._action_rows.append(row)
 
             self._status.set_description(
                 f"You completed {len(actions)} action(s) during this session. "
