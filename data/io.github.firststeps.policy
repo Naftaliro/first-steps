@@ -4,7 +4,7 @@
  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 <!--
   SPDX-License-Identifier: GPL-3.0-or-later
-  Copyright 2026 First Steps Contributors
+  Copyright 2026 Naftali Rosen
 
   Polkit policy for First Steps onboarding wizard.
   Grants authorization for system configuration tasks like

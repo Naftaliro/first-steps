@@ -81,7 +81,7 @@ The auto-update feature downloads `.deb` packages from the project's own GitHub 
 |-------------|--------|---------|
 | LICENSE file present | PASS | Full GPL-3.0 text from gnu.org |
 | SPDX identifiers in all source files | PASS | Verified across all 23 source files |
-| Copyright notices present | PASS | "Copyright 2026 First Steps Contributors" |
+| Copyright notices present | PASS | "Copyright 2026 Naftali Rosen" |
 | NOTICE file for third-party attribution | PASS | Lists all runtime dependencies |
 | No proprietary code included | PASS | 100% original code |
 | No bundled third-party code | PASS | All dependencies are system packages |

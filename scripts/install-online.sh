@@ -1,15 +1,22 @@
 #!/bin/bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 First Steps Contributors
+# Copyright 2026 Naftali Rosen
 #
 # One-click online installer for First Steps
 # Usage: curl -fsSL https://raw.githubusercontent.com/Naftaliro/first-steps/main/scripts/install-online.sh | sudo bash
 #
+# Security:
+#   - Downloads .deb from GitHub Releases only
+#   - Verifies SHA-256 checksum against published SHA256SUMS file
+#   - Falls back to source install (with git clone over HTTPS) if .deb is unavailable
+#
 # This script:
-#   1. Installs required dependencies (python3-gi, gir1.2-adw-1, flatpak, etc.)
-#   2. Downloads the latest .deb from GitHub Releases
-#   3. Installs the .deb package
-#   4. Cleans up
+#   1. Verifies system compatibility
+#   2. Installs required dependencies
+#   3. Downloads the latest .deb from GitHub Releases
+#   4. Verifies its SHA-256 checksum
+#   5. Installs the .deb package
+#   6. Cleans up
 
 set -euo pipefail
 
@@ -57,6 +64,7 @@ fi
 header "Checking system compatibility..."
 
 if [ -f /etc/os-release ]; then
+    # shellcheck disable=SC1091
     . /etc/os-release
     info "Detected: ${PRETTY_NAME:-Unknown}"
 else
@@ -81,6 +89,7 @@ DEPS=(
     flatpak
     policykit-1
     curl
+    ca-certificates
 )
 
 info "Required packages: ${DEPS[*]}"
@@ -91,47 +100,86 @@ ok "Dependencies installed"
 # ── Download ─────────────────────────────────────────────────────────
 header "Downloading First Steps..."
 
-# Dynamically find the latest .deb from GitHub Releases API
-DEB_URL=""
-if command -v curl &>/dev/null; then
-    RELEASE_JSON=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null || echo "")
-    if [ -n "$RELEASE_JSON" ]; then
-        # Extract .deb download URL from JSON (portable grep approach)
-        DEB_URL=$(echo "$RELEASE_JSON" | grep -o '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*\.deb"' | head -1 | grep -o 'https://[^"]*')
-    fi
-fi
-
-# Fallback to known latest URL pattern
-if [ -z "$DEB_URL" ]; then
-    DEB_URL="https://github.com/${REPO}/releases/latest/download/first-steps_1.1.0-1_all.deb"
-    warn "Could not query GitHub API, using fallback URL"
-fi
-
-DEB_FILE="${TMP_DIR}/first-steps.deb"
-info "Downloading from: ${DEB_URL}"
-
-if curl -fsSL -o "${DEB_FILE}" "${DEB_URL}" 2>/dev/null; then
-    ok "Downloaded .deb package"
-
-    # ── Install .deb ─────────────────────────────────────────────────
-    header "Installing First Steps..."
-    dpkg -i "${DEB_FILE}" 2>&1
-    # Fix any missing dependencies
-    apt-get install -f -y 2>&1 | tail -1
-    ok "First Steps installed via .deb package"
-else
-    warn "Could not download .deb from GitHub Releases."
-    info "Falling back to install from source..."
-
-    # Clone and install from source
+install_from_source() {
+    info "Installing from source..."
     if ! command -v git &>/dev/null; then
         apt-get install -y git
     fi
-
     git clone "https://github.com/${REPO}.git" "${TMP_DIR}/first-steps" 2>&1 | tail -1
     cd "${TMP_DIR}/first-steps"
     bash install.sh
     ok "First Steps installed from source"
+}
+
+# Query GitHub Releases API for the latest release
+DEB_URL=""
+SUMS_URL=""
+RELEASE_JSON=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null || echo "")
+
+if [ -n "$RELEASE_JSON" ]; then
+    # Extract .deb download URL
+    DEB_URL=$(echo "$RELEASE_JSON" | grep -o '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*\.deb"' | head -1 | grep -o 'https://[^"]*' || echo "")
+    # Extract SHA256SUMS download URL
+    SUMS_URL=$(echo "$RELEASE_JSON" | grep -o '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*SHA256SUMS"' | head -1 | grep -o 'https://[^"]*' || echo "")
+fi
+
+if [ -z "$DEB_URL" ]; then
+    warn "Could not find .deb in latest GitHub Release."
+    install_from_source
+else
+    DEB_FILE="${TMP_DIR}/first-steps.deb"
+    info "Downloading from: ${DEB_URL}"
+
+    if ! curl -fsSL -o "${DEB_FILE}" "${DEB_URL}" 2>/dev/null; then
+        warn "Download failed."
+        install_from_source
+    else
+        ok "Downloaded .deb package"
+
+        # ── Checksum verification ────────────────────────────────────
+        header "Verifying integrity..."
+
+        if [ -n "$SUMS_URL" ]; then
+            SUMS_FILE="${TMP_DIR}/SHA256SUMS"
+            if curl -fsSL -o "${SUMS_FILE}" "${SUMS_URL}" 2>/dev/null; then
+                # Extract expected hash for the .deb filename
+                DEB_BASENAME=$(basename "$DEB_URL")
+                EXPECTED_HASH=$(grep "${DEB_BASENAME}" "${SUMS_FILE}" | awk '{print $1}')
+
+                if [ -n "$EXPECTED_HASH" ]; then
+                    ACTUAL_HASH=$(sha256sum "${DEB_FILE}" | awk '{print $1}')
+                    if [ "$EXPECTED_HASH" = "$ACTUAL_HASH" ]; then
+                        ok "SHA-256 checksum verified: ${ACTUAL_HASH:0:16}..."
+                    else
+                        error "SHA-256 checksum mismatch!"
+                        error "  Expected: ${EXPECTED_HASH}"
+                        error "  Actual:   ${ACTUAL_HASH}"
+                        error ""
+                        error "The downloaded file may be corrupted or tampered with."
+                        error "Aborting installation for security. Try again or install from source:"
+                        error "  git clone https://github.com/${REPO}.git && cd first-steps && sudo ./install.sh"
+                        exit 1
+                    fi
+                else
+                    warn "Could not find checksum for ${DEB_BASENAME} in SHA256SUMS"
+                    warn "Proceeding without checksum verification"
+                fi
+            else
+                warn "Could not download SHA256SUMS file"
+                warn "Proceeding without checksum verification"
+            fi
+        else
+            warn "No SHA256SUMS file found in release"
+            warn "Proceeding without checksum verification"
+        fi
+
+        # ── Install .deb ─────────────────────────────────────────────
+        header "Installing First Steps..."
+        dpkg -i "${DEB_FILE}" 2>&1
+        # Fix any missing dependencies
+        apt-get install -f -y 2>&1 | tail -1
+        ok "First Steps installed via .deb package"
+    fi
 fi
 
 # ── Done ─────────────────────────────────────────────────────────────

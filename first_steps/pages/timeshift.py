@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 First Steps Contributors
+# Copyright 2026 Naftali Rosen
 """Timeshift page — configure automatic system backups with sane defaults."""
 
 import json

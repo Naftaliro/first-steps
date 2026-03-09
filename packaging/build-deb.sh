@@ -1,6 +1,6 @@
 #!/bin/bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 First Steps Contributors
+# Copyright 2026 Naftali Rosen
 #
 # build-deb.sh — Build the .deb package from the current source tree.
 #
@@ -33,7 +33,7 @@ Priority: optional
 Architecture: all
 Depends: python3 (>= 3.10), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, flatpak, policykit-1
 Recommends: ubuntu-drivers-common, timeshift, ufw
-Maintainer: First Steps Contributors <https://github.com/Naftaliro/first-steps>
+Maintainer: Naftali Rosen <https://github.com/Naftaliro/first-steps>
 Homepage: https://github.com/Naftaliro/first-steps
 Description: GTK4 + LibAdwaita onboarding wizard
  First Steps is a graphical setup wizard that helps new users configure
@@ -73,7 +73,7 @@ Upstream-Contact: https://github.com/Naftaliro/first-steps
 Source: https://github.com/Naftaliro/first-steps
 
 Files: *
-Copyright: 2026 First Steps Contributors
+Copyright: 2026 Naftali Rosen
 License: GPL-3.0-or-later
 
 License: GPL-3.0-or-later
