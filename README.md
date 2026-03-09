@@ -18,11 +18,14 @@ This automatically installs all dependencies, downloads the latest release, and 
 
 ### Download the .deb Package
 
-Grab the `.deb` from the [Releases page](https://github.com/Naftaliro/first-steps/releases/latest) and double-click it, or install from the terminal:
+Grab the `.deb` from the [Releases page](https://github.com/Naftaliro/first-steps/releases/latest) and double-click it, or install the latest version from the terminal:
 
 ```bash
-wget https://github.com/Naftaliro/first-steps/releases/latest/download/first-steps_1.1.0-1_all.deb
-sudo apt install ./first-steps_1.1.0-1_all.deb
+# Automatically download the latest .deb from GitHub Releases
+DEB_URL=$(curl -fsSL https://api.github.com/repos/Naftaliro/first-steps/releases/latest \
+  | grep -o '"browser_download_url"[^"]*\.deb"' | grep -o 'https://[^"]*')
+wget "$DEB_URL" -O first-steps-latest.deb
+sudo apt install ./first-steps-latest.deb
 ```
 
 ### Install from Source
