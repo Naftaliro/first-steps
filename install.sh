@@ -76,7 +76,7 @@ do_install() {
     # Install entry point
     mkdir -p "${BINDIR}"
     cat > "${BINDIR}/first-steps" << 'ENTRY'
-#!/usr/bin/env python3
+#!/usr/bin/python3
 import sys
 import os
 sys.path.insert(0, "/usr/lib/first-steps")
