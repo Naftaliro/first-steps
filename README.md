@@ -70,9 +70,13 @@ This project is licensed under the **GNU General Public License v3.0 or later**.
 - This project is not affiliated with or endorsed by Zorin Group. All branding is original to "First Steps" to avoid trademark infringement.
 - For a full list of dependencies and their licenses, see the [NOTICE](NOTICE) file.
 
+## Security
+
+To report a security vulnerability, please see [SECURITY.md](SECURITY.md) for responsible disclosure instructions.
+
 ## Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on reporting bugs, suggesting features, and submitting code.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on reporting bugs, suggesting features, and submitting code. For a history of changes, see the [CHANGELOG.md](CHANGELOG.md).
 
 ## Development
 
