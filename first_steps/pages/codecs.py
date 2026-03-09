@@ -136,7 +136,7 @@ class CodecsPage(BasePage):
             "set -e",
             "export DEBIAN_FRONTEND=noninteractive",
             "apt-get update -qq",
-            f"apt-get install -y {" ".join(packages)}",
+            f"apt-get install -y {' '.join(packages)}",
         ]
 
         # If DVD was selected, run dpkg-reconfigure

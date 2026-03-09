@@ -191,7 +191,7 @@ class BottlesPage(BasePage):
                 "export DEBIAN_FRONTEND=noninteractive",
                 "dpkg --add-architecture i386 2>/dev/null || true",
                 "apt-get update -qq",
-                f"apt-get install -y {" ".join(packages)}",
+                f"apt-get install -y {' '.join(packages)}",
             ]
             try:
                 fd, script_path = tempfile.mkstemp(
