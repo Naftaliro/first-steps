@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build .deb and Publish Release
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-gi gir1.2-adw-1 gir1.2-gtk-4.0 dpkg-dev
+
+      - name: Build .deb
+        run: bash packaging/build-deb.sh
+
+      - name: Generate SHA256SUMS
+        run: |
+          sha256sum first-steps_*_all.deb > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            first-steps_*_all.deb
+            SHA256SUMS
+          generate_release_notes: true

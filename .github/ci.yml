@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint-python:
+    name: Lint Python (flake8)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install flake8
+        run: pip install flake8
+
+      - name: Run flake8
+        run: |
+          flake8 first_steps/ \
+            --max-line-length=120 \
+            --extend-ignore=E402,W503 \
+            --count --show-source --statistics
+
+  lint-shell:
+    name: Lint Shell Scripts (shellcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Run shellcheck on install scripts
+        run: |
+          shellcheck -x install.sh
+          shellcheck -x scripts/install-online.sh
+          shellcheck -x scripts/first-steps-helper
+          shellcheck -x packaging/build-deb.sh
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: pip install pytest
+
+      - name: Run tests
+        run: python -m pytest tests/ -v
+
+  build-deb:
+    name: Build .deb Package
+    runs-on: ubuntu-22.04
+    needs: [lint-python, lint-shell, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-gi gir1.2-adw-1 gir1.2-gtk-4.0 dpkg-dev
+
+      - name: Build .deb
+        run: bash packaging/build-deb.sh
+
+      - name: Verify .deb
+        run: |
+          DEB_FILE=$(ls first-steps_*_all.deb)
+          echo "Built: $DEB_FILE"
+          dpkg-deb --info "$DEB_FILE"
+          dpkg-deb --contents "$DEB_FILE" | head -20
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: first-steps-deb
+          path: first-steps_*_all.deb
+          retention-days: 30
+
+  syntax-check:
+    name: Python Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile all Python files
+        run: |
+          python -m py_compile first_steps/__init__.py
+          python -m py_compile first_steps/app.py
+          python -m py_compile first_steps/updater.py
+          python -m py_compile first_steps/helpers/__init__.py
+          for f in first_steps/pages/*.py; do
+            python -m py_compile "$f"
+          done
+          echo "All Python files compile successfully"
