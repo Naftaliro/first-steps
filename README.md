@@ -71,9 +71,13 @@ This project is licensed under the **GNU General Public License v3.0 or later**.
 - For a full list of dependencies and their licenses, see the [NOTICE](NOTICE) file.
 - A comprehensive licensing audit is available in [LICENSING-AUDIT.md](LICENSING-AUDIT.md).
 
+## Security
+
+To report a security vulnerability, please see [SECURITY.md](SECURITY.md) for responsible disclosure instructions.
+
 ## Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on reporting bugs, suggesting features, and submitting code.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on reporting bugs, suggesting features, and submitting code. For a history of changes, see the [CHANGELOG.md](CHANGELOG.md).
 
 ## Development
 
