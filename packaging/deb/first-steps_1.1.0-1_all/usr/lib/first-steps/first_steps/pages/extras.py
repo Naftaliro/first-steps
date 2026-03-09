@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali Rosen
+# Copyright 2026 Naftali
 """Extras page — theme switcher, system update, accessibility, and more."""
 
 import os
 import subprocess
+import tempfile
 
 import gi
 
@@ -241,7 +242,7 @@ class ExtrasPage(BasePage):
         self._progress_label.set_text("Running system update... This may take a while.")
         self._progress_label.set_visible(True)
 
-        script_path = "/tmp/first-steps-update.sh"
+        # Use tempfile.mkstemp to avoid TOCTOU race conditions.
         script_lines = [
             "#!/bin/bash",
             "set -e",
@@ -251,7 +252,10 @@ class ExtrasPage(BasePage):
             "apt-get autoremove -y",
         ]
         try:
-            with open(script_path, "w") as f:
+            fd, script_path = tempfile.mkstemp(
+                prefix="first-steps-", suffix=".sh", dir="/tmp"
+            )
+            with os.fdopen(fd, "w") as f:
                 f.write("\n".join(script_lines) + "\n")
             os.chmod(script_path, 0o755)
         except Exception as e:
@@ -355,7 +359,7 @@ class ExtrasPage(BasePage):
         self._progress_label.set_text(f"Installing: {', '.join(selected)}...")
         self._progress_label.set_visible(True)
 
-        script_path = "/tmp/first-steps-utils.sh"
+        # Use tempfile.mkstemp to avoid TOCTOU race conditions.
         script_lines = [
             "#!/bin/bash",
             "set -e",
@@ -363,7 +367,10 @@ class ExtrasPage(BasePage):
             f"apt-get install -y {' '.join(selected)}",
         ]
         try:
-            with open(script_path, "w") as f:
+            fd, script_path = tempfile.mkstemp(
+                prefix="first-steps-", suffix=".sh", dir="/tmp"
+            )
+            with os.fdopen(fd, "w") as f:
                 f.write("\n".join(script_lines) + "\n")
             os.chmod(script_path, 0o755)
         except Exception as e:

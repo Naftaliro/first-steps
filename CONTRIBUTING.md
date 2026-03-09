@@ -28,7 +28,7 @@ Open an issue with the "enhancement" label describing:
 3. Ensure every new file includes the SPDX license header:
    ```python
    # SPDX-License-Identifier: GPL-3.0-or-later
-   # Copyright 2026 Naftali Rosen
+   # Copyright 2026 Naftali
    ```
 4. Test your changes on a Zorin OS 18 / Ubuntu 24.04 system.
 5. Submit a pull request with a clear description of changes.

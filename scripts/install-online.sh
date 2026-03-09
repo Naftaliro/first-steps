@@ -1,6 +1,6 @@
 #!/bin/bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali Rosen
+# Copyright 2026 Naftali
 #
 # One-click online installer for First Steps
 # Usage: curl -fsSL https://raw.githubusercontent.com/Naftaliro/first-steps/main/scripts/install-online.sh | sudo bash

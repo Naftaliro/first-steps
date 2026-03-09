@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali Rosen
+# Copyright 2026 Naftali
 """Timeshift page — configure automatic system backups with sane defaults."""
 
 import json
 import os
 import subprocess
+import tempfile
 
 import gi
 
@@ -197,10 +198,13 @@ class TimeshiftPage(BasePage):
         else:
             config["exclude"] = ["/root/**"]
 
-        # Write config to temp file
-        tmp_config = "/tmp/first-steps-timeshift.json"
+        # Write config to temp file.
+        # Use tempfile.mkstemp to avoid TOCTOU race conditions.
         try:
-            with open(tmp_config, "w") as f:
+            fd_cfg, tmp_config = tempfile.mkstemp(
+                prefix="first-steps-", suffix=".json", dir="/tmp"
+            )
+            with os.fdopen(fd_cfg, "w") as f:
                 json.dump(config, f, indent=2)
         except Exception as e:
             self._progress_label.set_text(f"Error writing config: {e}")
@@ -209,8 +213,8 @@ class TimeshiftPage(BasePage):
             btn.set_sensitive(True)
             return
 
-        # Single privileged script: install + configure in one pkexec prompt
-        script_path = "/tmp/first-steps-timeshift-setup.sh"
+        # Single privileged script: install + configure in one pkexec prompt.
+        # Use tempfile.mkstemp to avoid TOCTOU race conditions.
         script_lines = [
             "#!/bin/bash",
             "set -e",
@@ -226,7 +230,10 @@ class TimeshiftPage(BasePage):
             "echo 'Timeshift configured successfully'",
         ]
         try:
-            with open(script_path, "w") as f:
+            fd_sh, script_path = tempfile.mkstemp(
+                prefix="first-steps-", suffix=".sh", dir="/tmp"
+            )
+            with os.fdopen(fd_sh, "w") as f:
                 f.write("\n".join(script_lines) + "\n")
             os.chmod(script_path, 0o755)
         except Exception as e:

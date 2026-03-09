@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali Rosen
+# Copyright 2026 Naftali
 """Main application class — window, sidebar navigation, and page management."""
 
 import gi
@@ -68,13 +68,13 @@ class FirstStepsApp(Adw.Application):
             transient_for=self.props.active_window,
             application_name="First Steps",
             application_icon="io.github.firststeps",
-            developer_name="Naftali Rosen",
+            developer_name="Naftali",
             version=__version__,
             website="https://github.com/Naftaliro/first-steps",
             issue_url="https://github.com/Naftaliro/first-steps/issues",
             license_type=Gtk.License.GPL_3_0,
-            copyright="Copyright 2026 Naftali Rosen",
-            developers=["Naftali Rosen"],
+            copyright="Copyright 2026 Naftali",
+            developers=["Naftali"],
         )
         about.present()
 

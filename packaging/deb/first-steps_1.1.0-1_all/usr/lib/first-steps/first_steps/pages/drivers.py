@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali Rosen
+# Copyright 2026 Naftali
 """Drivers page — detect hardware and install recommended drivers."""
 
 import os
 import re
 import subprocess
+import tempfile
 
 import gi
 
@@ -193,8 +194,8 @@ class DriversPage(BasePage):
         self._status_label.set_text(f"Installing: {', '.join(selected)}...")
         self._status_label.set_visible(True)
 
-        # Use a script so DEBIAN_FRONTEND is set inside the privileged context
-        script_path = "/tmp/first-steps-drivers.sh"
+        # Use a script so DEBIAN_FRONTEND is set inside the privileged context.
+        # Use tempfile.mkstemp to avoid TOCTOU race conditions.
         script_lines = [
             "#!/bin/bash",
             "set -e",
@@ -202,7 +203,10 @@ class DriversPage(BasePage):
             f"apt-get install -y {' '.join(selected)}",
         ]
         try:
-            with open(script_path, "w") as f:
+            fd, script_path = tempfile.mkstemp(
+                prefix="first-steps-", suffix=".sh", dir="/tmp"
+            )
+            with os.fdopen(fd, "w") as f:
                 f.write("\n".join(script_lines) + "\n")
             os.chmod(script_path, 0o755)
         except Exception as e:

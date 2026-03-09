@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali Rosen
+# Copyright 2026 Naftali
 """Tests for file integrity, license headers, and project structure.
 
 These tests verify that all source files have proper license headers,

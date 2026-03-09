@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali Rosen
+# Copyright 2026 Naftali
 """Extras page — theme switcher, system update, accessibility, and more."""
 
 import os
@@ -364,7 +364,7 @@ class ExtrasPage(BasePage):
             "#!/bin/bash",
             "set -e",
             "export DEBIAN_FRONTEND=noninteractive",
-            f"apt-get install -y {" ".join(selected)}",
+            f"apt-get install -y {' '.join(selected)}",
         ]
         try:
             fd, script_path = tempfile.mkstemp(

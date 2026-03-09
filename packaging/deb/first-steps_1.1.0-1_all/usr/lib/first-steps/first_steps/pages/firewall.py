@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali Rosen
+# Copyright 2026 Naftali
 """Firewall page — enable and configure UFW with sensible defaults."""
 
 import os
 import subprocess
+import tempfile
 
 import gi
 
@@ -203,9 +204,12 @@ class FirewallPage(BasePage):
             "echo 'Firewall configured successfully'",
         ])
 
-        tmp_script = "/tmp/first-steps-firewall.sh"
+        # Use tempfile.mkstemp to avoid TOCTOU race conditions.
         try:
-            with open(tmp_script, "w") as f:
+            fd, tmp_script = tempfile.mkstemp(
+                prefix="first-steps-", suffix=".sh", dir="/tmp"
+            )
+            with os.fdopen(fd, "w") as f:
                 f.write("\n".join(script_lines) + "\n")
             os.chmod(tmp_script, 0o755)
         except Exception as e:

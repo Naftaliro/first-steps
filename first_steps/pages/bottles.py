@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali Rosen
+# Copyright 2026 Naftali
 """Bottles page — install and pre-configure Bottles for Windows app compatibility."""
 
 import os
@@ -191,7 +191,7 @@ class BottlesPage(BasePage):
                 "export DEBIAN_FRONTEND=noninteractive",
                 "dpkg --add-architecture i386 2>/dev/null || true",
                 "apt-get update -qq",
-                f"apt-get install -y {" ".join(packages)}",
+                f"apt-get install -y {' '.join(packages)}",
             ]
             try:
                 fd, script_path = tempfile.mkstemp(

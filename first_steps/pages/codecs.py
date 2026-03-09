@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali Rosen
+# Copyright 2026 Naftali
 """Codecs & Media page — install restricted extras, GStreamer, DVD support."""
 
 import os
@@ -136,7 +136,7 @@ class CodecsPage(BasePage):
             "set -e",
             "export DEBIAN_FRONTEND=noninteractive",
             "apt-get update -qq",
-            f"apt-get install -y {" ".join(packages)}",
+            f"apt-get install -y {' '.join(packages)}",
         ]
 
         # If DVD was selected, run dpkg-reconfigure

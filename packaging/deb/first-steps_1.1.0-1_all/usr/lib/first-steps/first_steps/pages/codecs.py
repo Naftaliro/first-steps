@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali Rosen
+# Copyright 2026 Naftali
 """Codecs & Media page — install restricted extras, GStreamer, DVD support."""
 
 import os
 import subprocess
+import tempfile
 
 import gi
 
@@ -129,7 +130,7 @@ class CodecsPage(BasePage):
 
         # Write a helper script that sets DEBIAN_FRONTEND properly.
         # pkexec strips environment variables, so we must set it inside the script.
-        script_path = "/tmp/first-steps-codecs.sh"
+        # Use tempfile.mkstemp to avoid TOCTOU race conditions with predictable paths.
         script_lines = [
             "#!/bin/bash",
             "set -e",
@@ -145,7 +146,10 @@ class CodecsPage(BasePage):
             )
 
         try:
-            with open(script_path, "w") as f:
+            fd, script_path = tempfile.mkstemp(
+                prefix="first-steps-", suffix=".sh", dir="/tmp"
+            )
+            with os.fdopen(fd, "w") as f:
                 f.write("\n".join(script_lines) + "\n")
             os.chmod(script_path, 0o755)
         except Exception as e:
