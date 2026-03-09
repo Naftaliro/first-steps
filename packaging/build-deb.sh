@@ -93,7 +93,7 @@ EOF
 
 # ── Generate entry point ────────────────────────────────────────────
 cat > "${BUILD_DIR}/usr/bin/first-steps" << 'EOF'
-#!/usr/bin/env python3
+#!/usr/bin/python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 import sys
 sys.path.insert(0, "/usr/lib/first-steps")
