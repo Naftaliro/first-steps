@@ -5,6 +5,7 @@
 import json
 import os
 import subprocess
+import tempfile
 import threading
 
 import gi
@@ -112,7 +113,11 @@ class UpdateChecker:
         thread.start()
 
     def _update_worker(self) -> None:
-        tmp_deb = "/tmp/first-steps-update.deb"
+        # Use tempfile.mkstemp to avoid TOCTOU race conditions.
+        fd, tmp_deb = tempfile.mkstemp(
+            prefix="first-steps-", suffix=".deb", dir="/tmp"
+        )
+        os.close(fd)  # curl will write to this path
         try:
             # Download
             result = subprocess.run(
