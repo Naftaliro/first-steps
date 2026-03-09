@@ -1,0 +1,82 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in First Steps
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill out the details below so we can reproduce and fix it.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what went wrong.
+      placeholder: "When I click 'Install Codecs', the app freezes and..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce this behavior?
+      placeholder: |
+        1. Open First Steps
+        2. Navigate to 'Codecs & Media'
+        3. Check 'Ubuntu Restricted Extras'
+        4. Click 'Install Selected Codecs'
+        5. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: Which OS and version are you running?
+      placeholder: "Zorin OS 18, Ubuntu 24.04, etc."
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: First Steps version
+      description: "Run `first-steps --version` or check About dialog"
+      placeholder: "1.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Installation method
+      options:
+        - ".deb package"
+        - "One-liner (curl | bash)"
+        - "From source (install.sh)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: "Run `first-steps` from a terminal and paste any error output here."
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Any other information, screenshots, or context that might help.

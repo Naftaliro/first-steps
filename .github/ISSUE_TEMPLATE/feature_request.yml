@@ -1,0 +1,51 @@
+name: Feature Request
+description: Suggest a new feature or improvement for First Steps
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea for a new page, option, or improvement? We'd love to hear it.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or motivation
+      description: What problem does this feature solve? Why would it be useful?
+      placeholder: "I find myself always having to manually configure X after a fresh install..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the feature or change you'd like to see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you considered any alternative approaches?
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - "New wizard page"
+        - "Improvement to existing page"
+        - "UI/UX improvement"
+        - "Packaging / installation"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Any mockups, screenshots, or references that illustrate the idea.
