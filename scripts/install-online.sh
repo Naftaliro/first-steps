@@ -28,7 +28,6 @@ error()   { echo -e "${RED}[ERROR]${NC}   $*" >&2; }
 header()  { echo -e "\n${BOLD}$*${NC}"; }
 
 REPO="Naftaliro/first-steps"
-DEB_NAME="first-steps_1.0.0-1_all.deb"
 TMP_DIR=$(mktemp -d)
 
 cleanup() {
@@ -81,26 +80,42 @@ DEPS=(
     gir1.2-adw-1
     flatpak
     policykit-1
+    curl
 )
 
 info "Required packages: ${DEPS[*]}"
 apt-get update -qq
-apt-get install -y "${DEPS[@]}" 2>&1 | tail -1
+DEBIAN_FRONTEND=noninteractive apt-get install -y "${DEPS[@]}" 2>&1 | tail -1
 ok "Dependencies installed"
 
 # ── Download ─────────────────────────────────────────────────────────
 header "Downloading First Steps..."
 
-# Try GitHub Release first, fall back to building from source
-DEB_URL="https://github.com/${REPO}/releases/latest/download/${DEB_NAME}"
+# Dynamically find the latest .deb from GitHub Releases API
+DEB_URL=""
+if command -v curl &>/dev/null; then
+    RELEASE_JSON=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null || echo "")
+    if [ -n "$RELEASE_JSON" ]; then
+        # Extract .deb download URL from JSON (portable grep approach)
+        DEB_URL=$(echo "$RELEASE_JSON" | grep -o '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*\.deb"' | head -1 | grep -o 'https://[^"]*')
+    fi
+fi
+
+# Fallback to known latest URL pattern
+if [ -z "$DEB_URL" ]; then
+    DEB_URL="https://github.com/${REPO}/releases/latest/download/first-steps_1.1.0-1_all.deb"
+    warn "Could not query GitHub API, using fallback URL"
+fi
+
+DEB_FILE="${TMP_DIR}/first-steps.deb"
 info "Downloading from: ${DEB_URL}"
 
-if curl -fsSL -o "${TMP_DIR}/${DEB_NAME}" "${DEB_URL}" 2>/dev/null; then
+if curl -fsSL -o "${DEB_FILE}" "${DEB_URL}" 2>/dev/null; then
     ok "Downloaded .deb package"
 
     # ── Install .deb ─────────────────────────────────────────────────
     header "Installing First Steps..."
-    dpkg -i "${TMP_DIR}/${DEB_NAME}" 2>&1
+    dpkg -i "${DEB_FILE}" 2>&1
     # Fix any missing dependencies
     apt-get install -f -y 2>&1 | tail -1
     ok "First Steps installed via .deb package"

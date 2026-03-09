@@ -2,9 +2,11 @@
 # Copyright 2026 First Steps Contributors
 """Drivers page — detect hardware and install recommended drivers."""
 
-import gi
-import subprocess
+import os
 import re
+import subprocess
+
+import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
@@ -45,6 +47,7 @@ class DriversPage(BasePage):
         )
 
         self._driver_checks: dict[str, Gtk.CheckButton] = {}
+        self._driver_rows: list[Adw.ActionRow] = []
 
         # Install button (hidden until scan)
         btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
@@ -89,18 +92,10 @@ class DriversPage(BasePage):
         self._spinner.set_visible(False)
         self._scan_btn.set_sensitive(True)
 
-        # Clear previous results
-        while True:
-            child = self._results_group.get_first_child()
-            # Skip the group's internal header children
-            if child is None:
-                break
-            # Only remove ActionRow children we added
-            if isinstance(child, Adw.ActionRow):
-                self._results_group.remove(child)
-            else:
-                break
-
+        # Clear previous results safely using tracked references
+        for row in self._driver_rows:
+            self._results_group.remove(row)
+        self._driver_rows.clear()
         self._driver_checks.clear()
 
         if not success or not output.strip():
@@ -108,6 +103,7 @@ class DriversPage(BasePage):
                 "No drivers detected, or ubuntu-drivers is not available.\n"
                 "Your system may already have the best drivers installed."
             )
+            self._install_btn.set_visible(False)
             return
 
         # Parse ubuntu-drivers devices output
@@ -118,6 +114,7 @@ class DriversPage(BasePage):
                 "No additional drivers are available. Your system is using "
                 "the best drivers already."
             )
+            self._install_btn.set_visible(False)
             return
 
         self._results_group.set_description(
@@ -133,8 +130,8 @@ class DriversPage(BasePage):
             if drv.get("device"):
                 subtitle_parts.append(drv["device"])
             if is_recommended:
-                subtitle_parts.append("★ Recommended")
-            subtitle = " — ".join(subtitle_parts)
+                subtitle_parts.append("\u2605 Recommended")
+            subtitle = " \u2014 ".join(subtitle_parts)
 
             row, check = self.add_action_row_with_check(
                 self._results_group,
@@ -142,21 +139,21 @@ class DriversPage(BasePage):
                 subtitle,
                 active=is_recommended,
             )
+            self._driver_rows.append(row)
             self._driver_checks[drv["package"]] = check
 
         self._install_btn.set_visible(True)
 
     @staticmethod
     def _parse_drivers(output: str) -> list[dict]:
-        """Parse the output of `ubuntu-drivers devices`."""
+        """Parse the output of ``ubuntu-drivers devices``."""
         drivers = []
-        current_device = {}
+        current_device: dict[str, str] = {}
 
         for line in output.splitlines():
             line = line.strip()
             if line.startswith("=="):
-                if current_device:
-                    current_device = {}
+                current_device = {}
                 continue
 
             if line.startswith("vendor"):
@@ -165,9 +162,7 @@ class DriversPage(BasePage):
                 current_device["device"] = line.split(":", 1)[-1].strip()
             elif line.startswith("driver"):
                 # e.g. "driver   : nvidia-driver-535 - distro non-free recommended"
-                match = re.match(
-                    r"driver\s*:\s*(\S+)\s*-\s*(.*)", line
-                )
+                match = re.match(r"driver\s*:\s*(\S+)\s*-\s*(.*)", line)
                 if match:
                     pkg = match.group(1)
                     info = match.group(2)
@@ -198,10 +193,27 @@ class DriversPage(BasePage):
         self._status_label.set_text(f"Installing: {', '.join(selected)}...")
         self._status_label.set_visible(True)
 
-        cmd = ["apt-get", "install", "-y"] + selected
+        # Use a script so DEBIAN_FRONTEND is set inside the privileged context
+        script_path = "/tmp/first-steps-drivers.sh"
+        script_lines = [
+            "#!/bin/bash",
+            "set -e",
+            "export DEBIAN_FRONTEND=noninteractive",
+            f"apt-get install -y {' '.join(selected)}",
+        ]
+        try:
+            with open(script_path, "w") as f:
+                f.write("\n".join(script_lines) + "\n")
+            os.chmod(script_path, 0o755)
+        except Exception as e:
+            self._status_label.set_text(f"Error: {e}")
+            btn.set_sensitive(True)
+            self._install_spinner.stop()
+            self._install_spinner.set_visible(False)
+            return
 
         self.run_privileged(
-            cmd,
+            ["bash", script_path],
             success_msg=f"Installed drivers: {', '.join(selected)}",
             callback=self._on_install_done,
         )
@@ -216,7 +228,9 @@ class DriversPage(BasePage):
                 "Drivers installed successfully! A reboot may be required "
                 "for changes to take effect."
             )
+            self.show_toast("Drivers installed! Reboot recommended.")
         else:
+            short = output.strip().split("\n")[-3:]
             self._status_label.set_text(
-                f"Driver installation encountered an issue.\n{output[:300]}"
+                "Driver installation encountered an issue:\n" + "\n".join(short)
             )

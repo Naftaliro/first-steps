@@ -2,8 +2,10 @@
 # Copyright 2026 First Steps Contributors
 """Power & Performance page — power profiles, lid behavior, suspend timeout."""
 
-import gi
+import os
 import subprocess
+
+import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
@@ -56,7 +58,7 @@ class PowerPage(BasePage):
         )
 
         self._profile_model = Gtk.StringList.new(
-            [f"{name} — {desc}" for _, name, desc in POWER_PROFILES]
+            [f"{name} \u2014 {desc}" for _, name, desc in POWER_PROFILES]
         )
         self._profile_row = Adw.ComboRow()
         self._profile_row.set_title("Active Profile")
@@ -74,7 +76,7 @@ class PowerPage(BasePage):
         )
 
         self._lid_ac_model = Gtk.StringList.new(
-            [f"{name}" for _, name, _ in LID_ACTIONS]
+            [name for _, name, _ in LID_ACTIONS]
         )
         self._lid_ac_row = Adw.ComboRow()
         self._lid_ac_row.set_title("On AC Power")
@@ -84,7 +86,7 @@ class PowerPage(BasePage):
         self._lid_group.add(self._lid_ac_row)
 
         self._lid_bat_model = Gtk.StringList.new(
-            [f"{name}" for _, name, _ in LID_ACTIONS]
+            [name for _, name, _ in LID_ACTIONS]
         )
         self._lid_bat_row = Adw.ComboRow()
         self._lid_bat_row.set_title("On Battery")
@@ -118,9 +120,7 @@ class PowerPage(BasePage):
         self._suspend_group.add(self._suspend_bat_row)
 
         # ── Screen Blank ─────────────────────────────────────────────
-        self._screen_group = self.add_preferences_group(
-            "Screen",
-        )
+        self._screen_group = self.add_preferences_group("Screen")
 
         self._dim_row, self._dim_switch = self.add_action_row_with_switch(
             self._screen_group,
@@ -166,7 +166,7 @@ class PowerPage(BasePage):
                     if key == current:
                         self._profile_row.set_selected(i)
                         break
-        except Exception:
+        except (FileNotFoundError, Exception):
             pass  # powerprofilesctl may not be available
 
     def _on_apply(self, btn: Gtk.Button) -> None:
@@ -176,9 +176,7 @@ class PowerPage(BasePage):
         self._progress_label.set_text("Applying power settings...")
         self._progress_label.set_visible(True)
 
-        actions = []
-
-        # 1. Set power profile
+        # 1. Power profile
         profile_idx = self._profile_row.get_selected()
         profile_key = POWER_PROFILES[profile_idx][0]
         profile_name = POWER_PROFILES[profile_idx][1]
@@ -195,7 +193,7 @@ class PowerPage(BasePage):
         suspend_bat_idx = self._suspend_bat_row.get_selected()
         suspend_bat_val = SUSPEND_TIMEOUTS[suspend_bat_idx][0]
 
-        # Build a script that applies all settings
+        # Build a script that applies privileged settings
         script_lines = [
             "#!/bin/bash",
             "set -e",
@@ -204,26 +202,22 @@ class PowerPage(BasePage):
             f"powerprofilesctl set {profile_key} 2>/dev/null || true",
             "",
             "# Configure lid close behavior via logind.conf",
-            f'mkdir -p /etc/systemd/logind.conf.d',
-            f'cat > /etc/systemd/logind.conf.d/first-steps-lid.conf << EOF',
-            f'[Login]',
-            f'HandleLidSwitch={lid_ac_key}',
-            f'HandleLidSwitchExternalPower={lid_ac_key}',
-            f'HandleLidSwitchDocked={lid_ac_key}',
-            f'EOF',
-            "",
-            "# Apply GSettings for suspend timeouts (as the calling user)",
-            f"# These will be applied via the non-privileged callback",
+            "mkdir -p /etc/systemd/logind.conf.d",
+            "cat > /etc/systemd/logind.conf.d/first-steps-lid.conf << 'EOF'",
+            "[Login]",
+            f"HandleLidSwitch={lid_bat_key}",
+            f"HandleLidSwitchExternalPower={lid_ac_key}",
+            f"HandleLidSwitchDocked={lid_ac_key}",
+            "EOF",
             "",
             "# Restart logind to apply lid settings",
-            "systemctl restart systemd-logind 2>/dev/null || true",
+            "systemctl kill -s HUP systemd-logind 2>/dev/null || true",
         ]
 
         tmp_script = "/tmp/first-steps-power.sh"
         try:
             with open(tmp_script, "w") as f:
                 f.write("\n".join(script_lines) + "\n")
-            import os
             os.chmod(tmp_script, 0o755)
         except Exception as e:
             self._progress_label.set_text(f"Error: {e}")
@@ -247,28 +241,26 @@ class PowerPage(BasePage):
         # Apply GSettings for suspend (runs as current user, no elevation)
         if success:
             try:
-                # Set auto-suspend timeouts via gsettings
                 subprocess.run([
                     "gsettings", "set",
                     "org.gnome.settings-daemon.plugins.power",
                     "sleep-inactive-ac-timeout",
                     str(suspend_ac),
-                ], timeout=5)
+                ], timeout=5, capture_output=True)
                 subprocess.run([
                     "gsettings", "set",
                     "org.gnome.settings-daemon.plugins.power",
                     "sleep-inactive-battery-timeout",
                     str(suspend_bat),
-                ], timeout=5)
+                ], timeout=5, capture_output=True)
 
-                # Set dim on idle
                 dim = self._dim_switch.get_active()
                 subprocess.run([
                     "gsettings", "set",
                     "org.gnome.settings-daemon.plugins.power",
                     "idle-dim",
                     "true" if dim else "false",
-                ], timeout=5)
+                ], timeout=5, capture_output=True)
             except Exception:
                 pass
 
@@ -277,10 +269,10 @@ class PowerPage(BasePage):
         self._apply_btn.set_sensitive(True)
 
         if success:
-            self._progress_label.set_text(
-                "Power settings applied successfully!"
-            )
+            self._progress_label.set_text("Power settings applied successfully!")
+            self.show_toast("Power settings applied!")
         else:
+            short = output.strip().split("\n")[-3:]
             self._progress_label.set_text(
-                f"Some settings may not have been applied.\n{output[:200]}"
+                "Some settings may not have been applied:\n" + "\n".join(short)
             )

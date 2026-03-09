@@ -2,6 +2,10 @@
 # Copyright 2026 First Steps Contributors
 """Base page class for wizard pages."""
 
+import os
+import subprocess
+import threading
+
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -114,13 +118,13 @@ class BasePage(Gtk.ScrolledWindow):
         box.set_margin_top(16)
 
         if back_tag:
-            back_btn = Gtk.Button(label="← Back")
+            back_btn = Gtk.Button(label="\u2190 Back")
             back_btn.add_css_class("flat")
             back_btn.connect("clicked", lambda _: self.window.navigate_to(back_tag))
             box.append(back_btn)
 
         if next_tag:
-            next_btn = Gtk.Button(label="Next →")
+            next_btn = Gtk.Button(label="Next \u2192")
             next_btn.add_css_class("suggested-action")
             next_btn.connect("clicked", lambda _: self.window.navigate_to(next_tag))
             box.append(next_btn)
@@ -128,22 +132,18 @@ class BasePage(Gtk.ScrolledWindow):
         self._outer_box.append(box)
 
     def show_toast(self, message: str) -> None:
-        """Show an in-app toast notification."""
-        toast = Adw.Toast.new(message)
-        toast.set_timeout(3)
-        # Walk up to find a toast overlay or the window
-        widget = self
-        while widget:
-            if isinstance(widget, Adw.ToastOverlay):
-                widget.add_toast(toast)
-                return
-            widget = widget.get_parent()
+        """Show an in-app toast notification via the window's ToastOverlay."""
+        self.window.show_toast(message)
+
+    def show_error_dialog(self, title: str, body: str) -> None:
+        """Show a modal error dialog."""
+        dialog = Adw.MessageDialog.new(self.window, title, body)
+        dialog.add_response("ok", "OK")
+        dialog.set_default_response("ok")
+        dialog.present()
 
     def run_privileged(self, command: list[str], success_msg: str, callback=None) -> None:
         """Run a command via pkexec asynchronously and report result."""
-        import subprocess
-        import threading
-
         full_cmd = ["pkexec"] + command
 
         def _worker():
@@ -158,13 +158,16 @@ class BasePage(Gtk.ScrolledWindow):
                 output = result.stdout + result.stderr
             except subprocess.TimeoutExpired:
                 success = False
-                output = "Operation timed out."
+                output = "Operation timed out after 10 minutes."
+            except FileNotFoundError:
+                success = False
+                output = "pkexec not found. Is policykit-1 installed?"
             except Exception as e:
                 success = False
                 output = str(e)
 
             def _on_done():
-                if success:
+                if success and success_msg:
                     self.window.log_action(success_msg)
                 if callback:
                     callback(success, output)
@@ -176,8 +179,6 @@ class BasePage(Gtk.ScrolledWindow):
 
     def run_unprivileged(self, command: list[str], success_msg: str, callback=None) -> None:
         """Run a command without elevation asynchronously."""
-        import subprocess
-        import threading
 
         def _worker():
             try:
@@ -191,13 +192,16 @@ class BasePage(Gtk.ScrolledWindow):
                 output = result.stdout + result.stderr
             except subprocess.TimeoutExpired:
                 success = False
-                output = "Operation timed out."
+                output = "Operation timed out after 10 minutes."
+            except FileNotFoundError:
+                success = False
+                output = f"Command not found: {command[0]}"
             except Exception as e:
                 success = False
                 output = str(e)
 
             def _on_done():
-                if success:
+                if success and success_msg:
                     self.window.log_action(success_msg)
                 if callback:
                     callback(success, output)
@@ -206,3 +210,22 @@ class BasePage(Gtk.ScrolledWindow):
 
         thread = threading.Thread(target=_worker, daemon=True)
         thread.start()
+
+    @staticmethod
+    def clear_preferences_group(group: Adw.PreferencesGroup) -> None:
+        """Safely remove all ActionRow children from a PreferencesGroup."""
+        # Collect rows first, then remove (avoids mutation during iteration)
+        rows_to_remove = []
+        child = group.get_first_child()
+        while child:
+            # The PreferencesGroup wraps rows in a GtkListBox inside a GtkBox.
+            # We need to walk through and find ActionRows.
+            if isinstance(child, Gtk.ListBox):
+                row = child.get_first_child()
+                while row:
+                    next_row = row.get_next_sibling()
+                    rows_to_remove.append(row)
+                    row = next_row
+            child = child.get_next_sibling()
+        for row in rows_to_remove:
+            group.remove(row)

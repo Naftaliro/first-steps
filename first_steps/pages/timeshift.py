@@ -2,10 +2,11 @@
 # Copyright 2026 First Steps Contributors
 """Timeshift page — configure automatic system backups with sane defaults."""
 
-import gi
 import json
 import os
 import subprocess
+
+import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
@@ -37,9 +38,7 @@ DEFAULT_TIMESHIFT_CONFIG = {
     "snapshot_size": 0,
     "snapshot_count": 0,
     "date_format": "%Y-%m-%d %H:%M:%S",
-    "exclude": [
-        "/root/**",
-    ],
+    "exclude": ["/root/**"],
     "exclude-apps": [],
 }
 
@@ -53,7 +52,7 @@ class TimeshiftPage(BasePage):
             "drive-harddisk-symbolic",
             "Backup Setup",
             "Timeshift creates system snapshots that let you roll back if "
-            "something goes wrong. We'll set it up with sensible defaults — "
+            "something goes wrong. We'll set it up with sensible defaults \u2014 "
             "weekly snapshots, keeping the last 3."
         )
 
@@ -121,7 +120,7 @@ class TimeshiftPage(BasePage):
         self._exclude_home_row, self._exclude_home_switch = self.add_action_row_with_switch(
             self._options_group,
             "Exclude /home from snapshots",
-            "Recommended — your personal files are not affected by system rollbacks",
+            "Recommended \u2014 your personal files are not affected by system rollbacks",
             active=True,
         )
 
@@ -181,24 +180,8 @@ class TimeshiftPage(BasePage):
         btn.set_sensitive(False)
         self._spinner.set_visible(True)
         self._spinner.start()
-        self._progress_label.set_text("Installing Timeshift...")
+        self._progress_label.set_text("Installing and configuring Timeshift...")
         self._progress_label.set_visible(True)
-
-        self.run_privileged(
-            ["apt-get", "install", "-y", "timeshift"],
-            success_msg="Installed Timeshift",
-            callback=self._on_timeshift_installed,
-        )
-
-    def _on_timeshift_installed(self, success: bool, output: str) -> None:
-        if not success:
-            self._progress_label.set_text(f"Failed to install Timeshift.\n{output[:200]}")
-            self._spinner.stop()
-            self._spinner.set_visible(False)
-            self._install_btn.set_sensitive(True)
-            return
-
-        self._progress_label.set_text("Writing Timeshift configuration...")
 
         # Build config from UI selections
         config = DEFAULT_TIMESHIFT_CONFIG.copy()
@@ -214,27 +197,52 @@ class TimeshiftPage(BasePage):
         else:
             config["exclude"] = ["/root/**"]
 
-        # Write config to a temp file, then move it with pkexec
-        tmp_path = "/tmp/first-steps-timeshift.json"
+        # Write config to temp file
+        tmp_config = "/tmp/first-steps-timeshift.json"
         try:
-            with open(tmp_path, "w") as f:
+            with open(tmp_config, "w") as f:
                 json.dump(config, f, indent=2)
         except Exception as e:
             self._progress_label.set_text(f"Error writing config: {e}")
             self._spinner.stop()
             self._spinner.set_visible(False)
-            self._install_btn.set_sensitive(True)
+            btn.set_sensitive(True)
             return
 
-        # Use a helper script to place the config
+        # Single privileged script: install + configure in one pkexec prompt
+        script_path = "/tmp/first-steps-timeshift-setup.sh"
+        script_lines = [
+            "#!/bin/bash",
+            "set -e",
+            "export DEBIAN_FRONTEND=noninteractive",
+            "",
+            "# Install Timeshift if not present",
+            "command -v timeshift >/dev/null 2>&1 || apt-get install -y timeshift",
+            "",
+            "# Write configuration",
+            "mkdir -p /etc/timeshift",
+            f"cp {tmp_config} /etc/timeshift/timeshift.json",
+            "",
+            "echo 'Timeshift configured successfully'",
+        ]
+        try:
+            with open(script_path, "w") as f:
+                f.write("\n".join(script_lines) + "\n")
+            os.chmod(script_path, 0o755)
+        except Exception as e:
+            self._progress_label.set_text(f"Error: {e}")
+            self._spinner.stop()
+            self._spinner.set_visible(False)
+            btn.set_sensitive(True)
+            return
+
         self.run_privileged(
-            ["bash", "-c",
-             f"mkdir -p /etc/timeshift && cp {tmp_path} /etc/timeshift/timeshift.json"],
-            success_msg="Configured Timeshift (weekly snapshots, keep 3)",
-            callback=self._on_config_written,
+            ["bash", script_path],
+            success_msg="Installed and configured Timeshift (weekly snapshots, keep 3)",
+            callback=self._on_setup_done,
         )
 
-    def _on_config_written(self, success: bool, output: str) -> None:
+    def _on_setup_done(self, success: bool, output: str) -> None:
         self._spinner.stop()
         self._spinner.set_visible(False)
         self._install_btn.set_sensitive(True)
@@ -245,9 +253,12 @@ class TimeshiftPage(BasePage):
                 "Automatic snapshots will run on schedule."
             )
             self._snapshot_btn.set_visible(True)
+            self._status_row.set_subtitle("Timeshift is installed and configured")
+            self.show_toast("Timeshift configured!")
         else:
+            short = output.strip().split("\n")[-3:]
             self._progress_label.set_text(
-                f"Configuration may not have been saved.\n{output[:200]}"
+                "Setup encountered an issue:\n" + "\n".join(short)
             )
 
     def _on_create_snapshot(self, btn: Gtk.Button) -> None:
@@ -265,7 +276,9 @@ class TimeshiftPage(BasePage):
         self._snapshot_btn.set_sensitive(True)
         if success:
             self._progress_label.set_text("First snapshot created successfully!")
+            self.show_toast("First snapshot created!")
         else:
+            short = output.strip().split("\n")[-3:]
             self._progress_label.set_text(
-                f"Snapshot creation encountered an issue.\n{output[:300]}"
+                "Snapshot creation encountered an issue:\n" + "\n".join(short)
             )

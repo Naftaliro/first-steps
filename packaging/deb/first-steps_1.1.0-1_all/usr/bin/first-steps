@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 First Steps Contributors
-"""Entry point for the First Steps onboarding wizard."""
-
 import sys
 sys.path.insert(0, "/usr/lib/first-steps")
-
 from first_steps.app import FirstStepsApp
-
 sys.exit(FirstStepsApp().run(sys.argv))

@@ -214,7 +214,9 @@ class FlatpakPage(BasePage):
 
         if success:
             self._status_label.set_text("All selected apps installed successfully!")
+            self.show_toast("Flatpak apps installed!")
         else:
+            short = output.strip().split("\n")[-3:]
             self._status_label.set_text(
-                f"Some apps may have failed to install.\n{output[:300]}"
+                "Some apps may have failed to install:\n" + "\n".join(short)
             )

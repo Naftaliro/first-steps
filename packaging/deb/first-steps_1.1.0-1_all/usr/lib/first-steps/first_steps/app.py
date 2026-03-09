@@ -10,6 +10,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio, GLib, Gtk
 
 from first_steps import __app_id__, __version__
+from first_steps.updater import UpdateChecker
 from first_steps.pages.welcome import WelcomePage
 from first_steps.pages.codecs import CodecsPage
 from first_steps.pages.flatpak import FlatpakPage
@@ -47,12 +48,35 @@ class FirstStepsApp(Adw.Application):
         )
         self.completed_actions: list[str] = []
 
+        # Register an About action
+        about_action = Gio.SimpleAction.new("about", None)
+        about_action.connect("activate", self._on_about)
+        self.add_action(about_action)
+
     # ── activation ───────────────────────────────────────────────────
     def do_activate(self) -> None:  # noqa: D401
         win = self.props.active_window
         if not win:
             win = FirstStepsWindow(application=self)
+            # Check for updates on first launch (non-blocking)
+            updater = UpdateChecker(win)
+            updater.check_async()
         win.present()
+
+    def _on_about(self, action, param) -> None:
+        about = Adw.AboutWindow(
+            transient_for=self.props.active_window,
+            application_name="First Steps",
+            application_icon="io.github.firststeps",
+            developer_name="First Steps Contributors",
+            version=__version__,
+            website="https://github.com/Naftaliro/first-steps",
+            issue_url="https://github.com/Naftaliro/first-steps/issues",
+            license_type=Gtk.License.GPL_3_0,
+            copyright="Copyright 2026 First Steps Contributors",
+            developers=["First Steps Contributors"],
+        )
+        about.present()
 
 
 class FirstStepsWindow(Adw.ApplicationWindow):
@@ -69,6 +93,9 @@ class FirstStepsWindow(Adw.ApplicationWindow):
 
     # ── UI construction ──────────────────────────────────────────────
     def _build_ui(self) -> None:
+        # ── Toast overlay wraps everything ───────────────────────────
+        self._toast_overlay = Adw.ToastOverlay()
+
         # ── Navigation view (split pane) ─────────────────────────────
         self._split = Adw.NavigationSplitView()
         self._split.set_min_sidebar_width(220)
@@ -91,6 +118,15 @@ class FirstStepsWindow(Adw.ApplicationWindow):
         # Wrap content in a toolbar view with a header
         content_toolbar = Adw.ToolbarView()
         content_header = Adw.HeaderBar()
+
+        # Add About menu button
+        menu_btn = Gtk.MenuButton()
+        menu_btn.set_icon_name("open-menu-symbolic")
+        menu = Gio.Menu()
+        menu.append("About First Steps", "app.about")
+        menu_btn.set_menu_model(menu)
+        content_header.pack_end(menu_btn)
+
         self._content_title = Adw.WindowTitle.new("Welcome", "Let's get your system ready")
         content_header.set_title_widget(self._content_title)
         content_toolbar.add_top_bar(content_header)
@@ -99,7 +135,8 @@ class FirstStepsWindow(Adw.ApplicationWindow):
         content_page = Adw.NavigationPage.new(content_toolbar, "Content")
         self._split.set_content(content_page)
 
-        self.set_content(self._split)
+        self._toast_overlay.set_child(self._split)
+        self.set_content(self._toast_overlay)
 
         # Show welcome page initially
         self._stack.set_visible_child_name("welcome")
@@ -198,3 +235,9 @@ class FirstStepsWindow(Adw.ApplicationWindow):
 
     def get_completed_actions(self) -> list[str]:
         return self.get_application().completed_actions
+
+    def show_toast(self, message: str) -> None:
+        """Show an in-app toast notification via the window's ToastOverlay."""
+        toast = Adw.Toast.new(message)
+        toast.set_timeout(3)
+        self._toast_overlay.add_toast(toast)
