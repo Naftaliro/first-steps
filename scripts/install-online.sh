@@ -178,6 +178,15 @@ else
         dpkg -i "${DEB_FILE}" 2>&1
         # Fix any missing dependencies
         apt-get install -f -y 2>&1 | tail -1
+
+        # Ensure the launcher uses the system Python (not env python3)
+        # to guarantee access to the apt-installed python3-gi module.
+        if [ -f /usr/bin/first-steps ]; then
+            if head -1 /usr/bin/first-steps | grep -q 'env python3'; then
+                sed -i '1s|#!/usr/bin/env python3|#!/usr/bin/python3|' /usr/bin/first-steps
+                info "Patched launcher shebang to use system Python"
+            fi
+        fi
         ok "First Steps installed via .deb package"
     fi
 fi
