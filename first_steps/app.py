@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali
+# Copyright 2026 Naftali Rosen
 """Main application class — window, sidebar navigation, and page management."""
 
 import gi
@@ -10,7 +10,7 @@ gi.require_version("Adw", "1")
 import subprocess
 import sys
 
-from gi.repository import Adw, Gio, GLib, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from first_steps import __app_id__, __version__
 from first_steps.updater import UpdateChecker
@@ -22,22 +22,30 @@ from first_steps.pages.bottles import BottlesPage
 from first_steps.pages.timeshift import TimeshiftPage
 from first_steps.pages.power import PowerPage
 from first_steps.pages.firewall import FirewallPage
+from first_steps.pages.network import NetworkPage
+from first_steps.pages.privacy import PrivacyPage
+from first_steps.pages.development import DevelopmentPage
+from first_steps.pages.language import LanguagePage
 from first_steps.pages.extras import ExtrasPage
 from first_steps.pages.summary import SummaryPage
 
 
 # ── Page registry ────────────────────────────────────────────────────
 PAGE_REGISTRY = [
-    ("welcome",   "go-home-symbolic",            "Welcome",       WelcomePage),
-    ("codecs",    "media-playback-start-symbolic","Codecs & Media",CodecsPage),
-    ("flatpak",   "system-software-install-symbolic","Flatpak & Apps",FlatpakPage),
-    ("drivers",   "preferences-system-symbolic",  "Drivers",       DriversPage),
-    ("bottles",   "preferences-desktop-apps-symbolic","Windows Apps",BottlesPage),
-    ("timeshift", "drive-harddisk-symbolic",      "Backup",        TimeshiftPage),
-    ("power",     "battery-symbolic",             "Power",         PowerPage),
-    ("firewall",  "security-high-symbolic",       "Firewall",      FirewallPage),
-    ("extras",    "applications-utilities-symbolic","Extras",       ExtrasPage),
-    ("summary",   "emblem-ok-symbolic",           "Summary",       SummaryPage),
+    ("welcome",     "go-home-symbolic",                "Welcome",         WelcomePage),
+    ("codecs",      "media-playback-start-symbolic",   "Codecs & Media",  CodecsPage),
+    ("flatpak",     "system-software-install-symbolic", "Flatpak & Apps", FlatpakPage),
+    ("drivers",     "preferences-system-symbolic",     "Drivers",         DriversPage),
+    ("bottles",     "preferences-desktop-apps-symbolic","Windows Apps",    BottlesPage),
+    ("timeshift",   "drive-harddisk-symbolic",         "Backup",          TimeshiftPage),
+    ("power",       "battery-symbolic",                "Power",           PowerPage),
+    ("firewall",    "security-high-symbolic",          "Firewall",        FirewallPage),
+    ("network",     "network-wired-symbolic",          "Network",         NetworkPage),
+    ("privacy",     "security-medium-symbolic",        "Privacy",         PrivacyPage),
+    ("development", "utilities-terminal-symbolic",     "Development",     DevelopmentPage),
+    ("language",    "preferences-desktop-locale-symbolic", "Language",    LanguagePage),
+    ("extras",      "applications-utilities-symbolic",  "Extras",         ExtrasPage),
+    ("summary",     "emblem-ok-symbolic",              "Summary",         SummaryPage),
 ]
 
 
@@ -51,7 +59,7 @@ class FirstStepsApp(Adw.Application):
         )
         self.completed_actions: list[str] = []
 
-        # Register an About action
+        # Register actions
         about_action = Gio.SimpleAction.new("about", None)
         about_action.connect("activate", self._on_about)
         self.add_action(about_action)
@@ -71,13 +79,13 @@ class FirstStepsApp(Adw.Application):
             transient_for=self.props.active_window,
             application_name="First Steps",
             application_icon="io.github.firststeps",
-            developer_name="Naftali",
+            developer_name="Naftali Rosen",
             version=__version__,
             website="https://github.com/Naftaliro/first-steps",
             issue_url="https://github.com/Naftaliro/first-steps/issues",
             license_type=Gtk.License.GPL_3_0,
-            copyright="Copyright 2026 Naftali",
-            developers=["Naftali"],
+            copyright="Copyright 2026 Naftali Rosen",
+            developers=["Naftali Rosen"],
         )
         about.add_link("Buy Me a Coffee \u2615", "https://buymeacoffee.com/naftali")
         about.present()
@@ -89,11 +97,14 @@ class FirstStepsWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.set_title("First Steps")
-        self.set_default_size(960, 680)
+        self.set_default_size(1000, 720)
         self.set_size_request(760, 520)
 
         self._pages: dict[str, object] = {}
+        self._sidebar_rows: dict[str, Gtk.ListBoxRow] = {}
+        self._sidebar_checks: dict[str, Gtk.Image] = {}
         self._build_ui()
+        self._setup_keyboard_shortcuts()
 
     # ── UI construction ──────────────────────────────────────────────
     def _build_ui(self) -> None:
@@ -102,8 +113,8 @@ class FirstStepsWindow(Adw.ApplicationWindow):
 
         # ── Navigation view (split pane) ─────────────────────────────
         self._split = Adw.NavigationSplitView()
-        self._split.set_min_sidebar_width(220)
-        self._split.set_max_sidebar_width(280)
+        self._split.set_min_sidebar_width(240)
+        self._split.set_max_sidebar_width(300)
 
         # ── Sidebar ──────────────────────────────────────────────────
         sidebar_page = Adw.NavigationPage.new(self._build_sidebar(), "Navigation")
@@ -122,6 +133,18 @@ class FirstStepsWindow(Adw.ApplicationWindow):
         # Wrap content in a toolbar view with a header
         content_toolbar = Adw.ToolbarView()
         content_header = Adw.HeaderBar()
+
+        # Dark/Light mode toggle button
+        self._dark_toggle = Gtk.ToggleButton()
+        self._dark_toggle.set_icon_name("weather-clear-night-symbolic")
+        self._dark_toggle.set_tooltip_text("Toggle dark mode")
+        self._dark_toggle.connect("toggled", self._on_dark_toggled)
+        content_header.pack_end(self._dark_toggle)
+
+        # Detect current color scheme
+        style_mgr = Adw.StyleManager.get_default()
+        if style_mgr.get_dark():
+            self._dark_toggle.set_active(True)
 
         # Add About menu button
         menu_btn = Gtk.MenuButton()
@@ -171,6 +194,7 @@ class FirstStepsWindow(Adw.ApplicationWindow):
         for tag, icon, title_text, _ in PAGE_REGISTRY:
             row = self._make_sidebar_row(tag, icon, title_text)
             self._sidebar_list.append(row)
+            self._sidebar_rows[tag] = row
 
         scrolled.set_child(self._sidebar_list)
         sidebar_box.append(scrolled)
@@ -180,8 +204,7 @@ class FirstStepsWindow(Adw.ApplicationWindow):
         donate_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         donate_box.set_halign(Gtk.Align.CENTER)
 
-        # Coffee cup icon (using a standard icon that looks like a cup)
-        coffee_icon = Gtk.Label(label="\u2615")  # Hot beverage emoji
+        coffee_icon = Gtk.Label(label="\u2615")
         coffee_icon.add_css_class("title-3")
         donate_box.append(coffee_icon)
 
@@ -195,32 +218,15 @@ class FirstStepsWindow(Adw.ApplicationWindow):
         donate_btn.set_margin_end(12)
         donate_btn.set_margin_top(8)
         donate_btn.set_margin_bottom(12)
-        donate_btn.set_tooltip_text("Support this project — buymeacoffee.com/naftali")
+        donate_btn.set_tooltip_text("Support this project \u2014 buymeacoffee.com/naftali")
         donate_btn.connect("clicked", self._on_donate_clicked)
         sidebar_box.append(donate_btn)
 
         toolbar.set_content(sidebar_box)
         return toolbar
 
-    @staticmethod
-    def _on_donate_clicked(btn) -> None:
-        """Open the Buy Me a Coffee donation page in the default browser."""
-        url = "https://buymeacoffee.com/naftali"
-        try:
-            Gtk.UriLauncher.new(url).launch(None, None, None)
-        except Exception:
-            # Fallback for older GTK4 builds: use xdg-open
-            try:
-                subprocess.Popen(
-                    ["xdg-open", url],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            except FileNotFoundError:
-                pass
-
-    @staticmethod
-    def _make_sidebar_row(tag: str, icon_name: str, label_text: str) -> Gtk.ListBoxRow:
+    def _make_sidebar_row(self, tag: str, icon_name: str, label_text: str) -> Gtk.ListBoxRow:
+        """Create a sidebar row with icon, label, and a progress checkmark."""
         row = Gtk.ListBoxRow()
         row.set_name(tag)
 
@@ -239,8 +245,80 @@ class FirstStepsWindow(Adw.ApplicationWindow):
         label.set_hexpand(True)
         box.append(label)
 
+        # Progress indicator (hidden by default)
+        check_icon = Gtk.Image.new_from_icon_name("emblem-ok-symbolic")
+        check_icon.set_icon_size(Gtk.IconSize.NORMAL)
+        check_icon.set_opacity(0.0)  # Hidden initially
+        check_icon.add_css_class("success")
+        box.append(check_icon)
+        self._sidebar_checks[tag] = check_icon
+
         row.set_child(box)
         return row
+
+    def _setup_keyboard_shortcuts(self) -> None:
+        """Set up keyboard shortcuts for navigation."""
+        controller = Gtk.EventControllerKey.new()
+        controller.connect("key-pressed", self._on_key_pressed)
+        self.add_controller(controller)
+
+    def _on_key_pressed(self, controller, keyval, keycode, state) -> bool:
+        """Handle keyboard shortcuts."""
+        ctrl = state & Gdk.ModifierType.CONTROL_MASK
+
+        if ctrl:
+            # Ctrl+1 through Ctrl+0 for page navigation (0 = page 10)
+            key_map = {
+                Gdk.KEY_1: 0, Gdk.KEY_2: 1, Gdk.KEY_3: 2, Gdk.KEY_4: 3,
+                Gdk.KEY_5: 4, Gdk.KEY_6: 5, Gdk.KEY_7: 6, Gdk.KEY_8: 7,
+                Gdk.KEY_9: 8, Gdk.KEY_0: 9,
+            }
+            if keyval in key_map:
+                idx = key_map[keyval]
+                if idx < len(PAGE_REGISTRY):
+                    tag = PAGE_REGISTRY[idx][0]
+                    self.navigate_to(tag)
+                    return True
+
+            # Ctrl+Q to quit
+            if keyval == Gdk.KEY_q:
+                self.get_application().quit()
+                return True
+
+            # Ctrl+D to toggle dark mode
+            if keyval == Gdk.KEY_d:
+                self._dark_toggle.set_active(not self._dark_toggle.get_active())
+                return True
+
+        return False
+
+    def _on_dark_toggled(self, btn) -> None:
+        """Toggle between light and dark color schemes."""
+        style_mgr = Adw.StyleManager.get_default()
+        if btn.get_active():
+            style_mgr.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
+            btn.set_icon_name("weather-clear-symbolic")
+            btn.set_tooltip_text("Switch to light mode (Ctrl+D)")
+        else:
+            style_mgr.set_color_scheme(Adw.ColorScheme.FORCE_LIGHT)
+            btn.set_icon_name("weather-clear-night-symbolic")
+            btn.set_tooltip_text("Switch to dark mode (Ctrl+D)")
+
+    @staticmethod
+    def _on_donate_clicked(btn) -> None:
+        """Open the Buy Me a Coffee donation page in the default browser."""
+        url = "https://buymeacoffee.com/naftali"
+        try:
+            Gtk.UriLauncher.new(url).launch(None, None, None)
+        except Exception:
+            try:
+                subprocess.Popen(
+                    ["xdg-open", url],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except FileNotFoundError:
+                pass
 
     # ── Navigation ───────────────────────────────────────────────────
     def _on_sidebar_row_selected(self, listbox: Gtk.ListBox, row: Gtk.ListBoxRow) -> None:
@@ -276,6 +354,12 @@ class FirstStepsWindow(Adw.ApplicationWindow):
                 self.navigate_to(tags[idx + 1])
         except ValueError:
             pass
+
+    def update_sidebar_progress(self, tag: str, completed: bool) -> None:
+        """Update the sidebar checkmark for a given page."""
+        check_icon = self._sidebar_checks.get(tag)
+        if check_icon:
+            check_icon.set_opacity(1.0 if completed else 0.0)
 
     def log_action(self, description: str) -> None:
         """Record a completed action for the summary page."""

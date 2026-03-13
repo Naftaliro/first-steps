@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali
+# Copyright 2026 Naftali Rosen
 """Base page class for wizard pages."""
 
 import os
@@ -25,10 +25,13 @@ class BasePage(Gtk.ScrolledWindow):
     PAGE_TITLE = "Base"
     PAGE_DESCRIPTION = ""
     PAGE_ICON = "dialog-information-symbolic"
+    # Pages that don't represent actionable sections can set this False
+    SKIPPABLE = True
 
     def __init__(self, window, **kwargs) -> None:
         super().__init__(**kwargs)
         self.window = window
+        self._completed = False
         self.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
         self._clamp = Adw.Clamp()
@@ -48,6 +51,22 @@ class BasePage(Gtk.ScrolledWindow):
 
     def build_ui(self) -> None:
         """Override in subclasses to populate the page."""
+
+    @property
+    def is_completed(self) -> bool:
+        return self._completed
+
+    def mark_completed(self) -> None:
+        """Mark this page as completed and update the sidebar indicator."""
+        if not self._completed:
+            self._completed = True
+            self.window.update_sidebar_progress(self.PAGE_TAG, True)
+
+    def mark_skipped(self) -> None:
+        """Mark this page as skipped (completed without action)."""
+        self.mark_completed()
+        self.window.log_action(f"Skipped: {self.PAGE_TITLE}")
+        self.show_toast(f"{self.PAGE_TITLE} marked as done")
 
     # ── Helpers ──────────────────────────────────────────────────────
     def add_status_page(self, icon: str, title: str, description: str) -> Adw.StatusPage:
@@ -111,8 +130,11 @@ class BasePage(Gtk.ScrolledWindow):
         self._outer_box.append(btn)
         return btn
 
-    def add_navigation_buttons(self, back_tag: str | None = None, next_tag: str | None = None):
-        """Add Back / Next navigation buttons at the bottom."""
+    def add_navigation_buttons(
+        self, back_tag: str | None = None, next_tag: str | None = None,
+        skip: bool = True
+    ):
+        """Add Back / Skip / Next navigation buttons at the bottom."""
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         box.set_halign(Gtk.Align.CENTER)
         box.set_margin_top(16)
@@ -122,6 +144,18 @@ class BasePage(Gtk.ScrolledWindow):
             back_btn.add_css_class("flat")
             back_btn.connect("clicked", lambda _: self.window.navigate_to(back_tag))
             box.append(back_btn)
+
+        if skip and self.SKIPPABLE and next_tag:
+            skip_btn = Gtk.Button(label="Skip \u2014 I've done this")
+            skip_btn.add_css_class("flat")
+            skip_btn.set_tooltip_text("Mark this section as complete and move on")
+
+            def _on_skip(_btn, tag=next_tag):
+                self.mark_skipped()
+                self.window.navigate_to(tag)
+
+            skip_btn.connect("clicked", _on_skip)
+            box.append(skip_btn)
 
         if next_tag:
             next_btn = Gtk.Button(label="Next \u2192")
@@ -167,8 +201,10 @@ class BasePage(Gtk.ScrolledWindow):
                 output = str(e)
 
             def _on_done():
-                if success and success_msg:
-                    self.window.log_action(success_msg)
+                if success:
+                    if success_msg:
+                        self.window.log_action(success_msg)
+                    self.mark_completed()
                 if callback:
                     callback(success, output)
 
@@ -201,8 +237,10 @@ class BasePage(Gtk.ScrolledWindow):
                 output = str(e)
 
             def _on_done():
-                if success and success_msg:
-                    self.window.log_action(success_msg)
+                if success:
+                    if success_msg:
+                        self.window.log_action(success_msg)
+                    self.mark_completed()
                 if callback:
                     callback(success, output)
 
@@ -214,12 +252,9 @@ class BasePage(Gtk.ScrolledWindow):
     @staticmethod
     def clear_preferences_group(group: Adw.PreferencesGroup) -> None:
         """Safely remove all ActionRow children from a PreferencesGroup."""
-        # Collect rows first, then remove (avoids mutation during iteration)
         rows_to_remove = []
         child = group.get_first_child()
         while child:
-            # The PreferencesGroup wraps rows in a GtkListBox inside a GtkBox.
-            # We need to walk through and find ActionRows.
             if isinstance(child, Gtk.ListBox):
                 row = child.get_first_child()
                 while row:
