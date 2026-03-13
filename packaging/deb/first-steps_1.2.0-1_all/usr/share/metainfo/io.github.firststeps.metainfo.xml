@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<component type="desktop-application">
+  <id>io.github.firststeps</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>First Steps</name>
+  <summary>System setup wizard for new installations</summary>
+  <description>
+    <p>
+      First Steps is a GTK4 + LibAdwaita onboarding wizard that helps you
+      configure a fresh Linux installation. Instead of just showing links,
+      it actually performs the setup tasks for you through a clean,
+      checkbox-driven interface.
+    </p>
+    <p>Features include:</p>
+    <ul>
+      <li>One-click codec and media plugin installation</li>
+      <li>Flatpak/Flathub setup with a curated app picker</li>
+      <li>Hardware driver detection and installation</li>
+      <li>Windows app compatibility via Bottles</li>
+      <li>Automatic backup configuration with Timeshift</li>
+      <li>Power profile and lid behavior settings</li>
+      <li>UFW firewall configuration</li>
+      <li>Accessibility quick settings</li>
+      <li>GNOME Theme Switcher integration</li>
+    </ul>
+  </description>
+  <url type="homepage">https://github.com/Naftaliro/first-steps</url>
+  <url type="bugtracker">https://github.com/Naftaliro/first-steps/issues</url>
+  <developer_name>Naftali</developer_name>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="1.0.0" date="2026-03-08">
+      <description>
+        <p>Initial release with full onboarding wizard functionality.</p>
+      </description>
+    </release>
+  </releases>
+  <requires>
+    <id>org.gnome.Platform</id>
+  </requires>
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <control>touch</control>
+  </recommends>
+</component>

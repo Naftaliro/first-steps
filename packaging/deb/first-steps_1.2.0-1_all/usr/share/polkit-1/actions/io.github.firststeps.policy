@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!--
+  SPDX-License-Identifier: GPL-3.0-or-later
+  Copyright 2026 Naftali
+
+  Polkit policy for First Steps onboarding wizard.
+  Grants authorization for system configuration tasks like
+  package installation, firewall setup, and driver management.
+-->
+<policyconfig>
+  <vendor>First Steps</vendor>
+  <vendor_url>https://github.com/Naftaliro/first-steps</vendor_url>
+
+  <action id="io.github.firststeps.pkexec.run-helper">
+    <description>Run First Steps system helper</description>
+    <message>Authentication is required to configure your system.</message>
+    <icon_name>preferences-system-symbolic</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/first-steps/first-steps-helper</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+</policyconfig>

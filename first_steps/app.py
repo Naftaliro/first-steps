@@ -7,6 +7,9 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
+import subprocess
+import sys
+
 from gi.repository import Adw, Gio, GLib, Gtk
 
 from first_steps import __app_id__, __version__
@@ -76,6 +79,7 @@ class FirstStepsApp(Adw.Application):
             copyright="Copyright 2026 Naftali",
             developers=["Naftali"],
         )
+        about.add_link("Buy Me a Coffee \u2615", "https://buymeacoffee.com/naftali")
         about.present()
 
 
@@ -152,6 +156,9 @@ class FirstStepsWindow(Adw.ApplicationWindow):
         header.set_title_widget(title)
         toolbar.add_top_bar(header)
 
+        # Main vertical box to hold the list and the donation button
+        sidebar_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         scrolled.set_vexpand(True)
@@ -166,8 +173,51 @@ class FirstStepsWindow(Adw.ApplicationWindow):
             self._sidebar_list.append(row)
 
         scrolled.set_child(self._sidebar_list)
-        toolbar.set_content(scrolled)
+        sidebar_box.append(scrolled)
+
+        # ── Donation button at the bottom of the sidebar ────────────
+        donate_btn = Gtk.Button()
+        donate_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        donate_box.set_halign(Gtk.Align.CENTER)
+
+        # Coffee cup icon (using a standard icon that looks like a cup)
+        coffee_icon = Gtk.Label(label="\u2615")  # Hot beverage emoji
+        coffee_icon.add_css_class("title-3")
+        donate_box.append(coffee_icon)
+
+        donate_label = Gtk.Label(label="Buy Me a Coffee")
+        donate_label.add_css_class("caption")
+        donate_box.append(donate_label)
+
+        donate_btn.set_child(donate_box)
+        donate_btn.add_css_class("flat")
+        donate_btn.set_margin_start(12)
+        donate_btn.set_margin_end(12)
+        donate_btn.set_margin_top(8)
+        donate_btn.set_margin_bottom(12)
+        donate_btn.set_tooltip_text("Support this project — buymeacoffee.com/naftali")
+        donate_btn.connect("clicked", self._on_donate_clicked)
+        sidebar_box.append(donate_btn)
+
+        toolbar.set_content(sidebar_box)
         return toolbar
+
+    @staticmethod
+    def _on_donate_clicked(btn) -> None:
+        """Open the Buy Me a Coffee donation page in the default browser."""
+        url = "https://buymeacoffee.com/naftali"
+        try:
+            Gtk.UriLauncher.new(url).launch(None, None, None)
+        except Exception:
+            # Fallback for older GTK4 builds: use xdg-open
+            try:
+                subprocess.Popen(
+                    ["xdg-open", url],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except FileNotFoundError:
+                pass
 
     @staticmethod
     def _make_sidebar_row(tag: str, icon_name: str, label_text: str) -> Gtk.ListBoxRow:

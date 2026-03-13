@@ -1,0 +1,14 @@
+Package: first-steps
+Version: 1.2.0-1
+Section: admin
+Priority: optional
+Architecture: all
+Depends: python3 (>= 3.10), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, flatpak, policykit-1
+Recommends: ubuntu-drivers-common, timeshift, ufw
+Maintainer: Naftali <https://github.com/Naftaliro/first-steps>
+Homepage: https://github.com/Naftaliro/first-steps
+Description: GTK4 + LibAdwaita onboarding wizard
+ First Steps is a graphical setup wizard that helps new users configure
+ their system after installation. It handles codecs, Flatpak, drivers,
+ Windows app compatibility, backups, power management, and more —
+ all without touching a terminal.
