@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali
+# Copyright 2026 Naftali Rosen
 """Extras page — theme switcher, system update, accessibility, and more."""
 
 import os
@@ -174,7 +174,7 @@ class ExtrasPage(BasePage):
         self._progress_label.set_visible(False)
         self._outer_box.append(self._progress_label)
 
-        self.add_navigation_buttons(back_tag="firewall", next_tag="summary")
+        self.add_navigation_buttons(back_tag="language", next_tag="summary")
 
         # Detect current a11y settings
         GLib.idle_add(self._detect_a11y_settings)

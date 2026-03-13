@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali
+# Copyright 2026 Naftali Rosen
 """Firewall page — enable and configure UFW with sensible defaults."""
 
 import os
@@ -108,7 +108,7 @@ class FirewallPage(BasePage):
         self._progress_label.set_visible(False)
         self._outer_box.append(self._progress_label)
 
-        self.add_navigation_buttons(back_tag="power", next_tag="extras")
+        self.add_navigation_buttons(back_tag="power", next_tag="network")
 
     def _check_ufw_status(self) -> None:
         """Check UFW status — ufw status may need root, so try both ways."""
