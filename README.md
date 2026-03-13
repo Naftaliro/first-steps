@@ -14,7 +14,7 @@ Paste this into a terminal and you're done:
 curl -fsSL https://raw.githubusercontent.com/Naftaliro/first-steps/main/scripts/install-online.sh | sudo bash
 ```
 
-This automatically installs all dependencies, downloads the latest release, and sets everything up. To uninstall: `sudo apt remove first-steps`.
+This automatically installs all dependencies, downloads the latest release, **verifies its SHA-256 checksum**, and sets everything up. To uninstall: `sudo apt remove first-steps`.
 
 ### Download the .deb Package
 
@@ -42,25 +42,38 @@ To uninstall: `sudo ./install.sh remove`
 
 ## Features
 
+### Setup Pages (14 total)
+
 | Page | What It Does |
 |------|-------------|
-| **Welcome** | Overview of all setup sections with a quick-start guide |
-| **Codecs & Media** | One-click install of `ubuntu-restricted-extras`, GStreamer plugins (good/bad/ugly/libav), DVD support, and VA-API hardware acceleration |
-| **Flatpak & Apps** | Detects/enables Flathub, then offers a curated picker of 16 apps across Media, Productivity, Internet, Gaming, and Development |
-| **Drivers** | Wraps `ubuntu-drivers devices` — scans hardware, shows results with recommended flags, one-click install |
-| **Windows Apps** | Installs Bottles via Flatpak, optional Wine deps + GameMode, guided first-bottle creation with template picker |
-| **Backup** | Installs + configures Timeshift — schedule toggles (weekly/daily/boot), retention spinners, home exclusion, "Create First Snapshot" button |
-| **Power** | Power profile dropdown (power-saver/balanced/performance), lid behavior for AC and battery, auto-suspend timeouts, screen dim toggle |
-| **Firewall** | Enables UFW with deny-incoming/allow-outgoing defaults, 8 common service exceptions (SSH, KDE Connect, CUPS, etc.) |
-| **Extras** | Theme Switcher installer, theme packs, system update, accessibility toggles (large text, high contrast, large cursor, reduce animations), utility installer |
-| **Summary** | Live recap of every action taken during the session + recommended next steps |
+| **Welcome** | System info card (OS, CPU, GPU, RAM, disk), overview of all sections |
+| **Codecs & Media** | One-click install of `ubuntu-restricted-extras`, GStreamer plugins (good/bad/ugly/libav), DVD support, VA-API |
+| **Flatpak & Apps** | Detects/enables Flathub, curated picker of 16 apps across Media, Productivity, Internet, Gaming, Development |
+| **Drivers** | Wraps `ubuntu-drivers devices` — scans hardware, shows recommended flags, one-click install |
+| **Windows Apps** | Installs Bottles via Flatpak, optional Wine deps + GameMode, guided first-bottle creation |
+| **Backup** | Installs + configures Timeshift — schedule toggles, retention spinners, home exclusion, first snapshot |
+| **Power** | Power profile dropdown, lid behavior for AC/battery, auto-suspend timeouts, screen dim toggle |
+| **Firewall** | Enables UFW with deny-incoming/allow-outgoing defaults, 8 common service exceptions |
+| **Network** | Connectivity check (HTTP/DNS/latency), DNS configuration (Cloudflare/Google/Quad9), network tools installer |
+| **Privacy** | Disable Ubuntu telemetry/Whoopsie/popularity-contest, GNOME privacy settings, browser extension recommendations |
+| **Development** | Git identity config, code editor installer (VS Code/Codium/Zed/etc.), Docker/Podman, language runtimes, dev utilities |
+| **Language** | Language packs (12 languages), input methods (IBus/Fcitx5), spell-check dictionaries, font installer (Noto/Fira/Cascadia) |
+| **Extras** | Theme Switcher installer, theme packs, system update, accessibility toggles, utility installer |
+| **Summary** | Live recap of all actions + export setup report as Markdown + recommended next steps |
 
-### Additional Highlights
+### UX Features
 
-- **Auto-Update** — On launch, the app checks GitHub Releases for new versions and offers a one-click in-app upgrade.
-- **Privileged Operations** — Uses `pkexec` with a dedicated polkit policy. One auth prompt, no raw terminal commands.
-- **Async Execution** — All installs run in background threads with spinner feedback, keeping the UI responsive.
-- **No Zorin Branding** — Branded as "First Steps" with app ID `io.github.firststeps` to stay trademark-clean.
+| Feature | Details |
+|---------|---------|
+| **Dark/Light Mode Toggle** | One-click toggle in the header bar (Ctrl+D) |
+| **Sidebar Progress Indicators** | Green checkmarks appear next to completed sections |
+| **Skip / "I've Done This"** | Every page has a skip button for power users who've already configured things |
+| **Keyboard Shortcuts** | Ctrl+1–0 for page navigation, Ctrl+Q to quit, Ctrl+D for dark mode |
+| **Export Setup Report** | Save a Markdown report of everything configured during the session |
+| **Auto-Update** | Checks GitHub Releases on launch, offers one-click in-app upgrade |
+| **Toast Notifications** | Every action shows success/failure feedback via in-app toasts |
+| **Privileged Operations** | Uses `pkexec` with a dedicated polkit policy — one auth prompt, no terminal |
+| **Async Execution** | All installs run in background threads with spinner feedback |
 
 ---
 
@@ -76,11 +89,11 @@ This project is licensed under the **GNU General Public License v3.0 or later**.
 
 ## Security
 
-To report a security vulnerability, please see [SECURITY.md](SECURITY.md) for responsible disclosure instructions.
+The one-liner installer verifies SHA-256 checksums before installing. To report a security vulnerability, please see [SECURITY.md](SECURITY.md) for responsible disclosure instructions.
 
 ## Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on reporting bugs, suggesting features, and submitting code. For a history of changes, see the [CHANGELOG.md](CHANGELOG.md).
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on reporting bugs, suggesting features, and submitting code.
 
 ## Development
 
@@ -90,13 +103,14 @@ The application is written in Python using the PyGObject bindings for GTK4 and L
 |-----------|------|
 | Main Application | `first_steps/app.py` |
 | Auto-Update Module | `first_steps/updater.py` |
-| UI Pages | `first_steps/pages/` |
+| UI Pages (14) | `first_steps/pages/` |
 | Base Page Class | `first_steps/pages/__init__.py` |
 | Privileged Helper | `scripts/first-steps-helper` |
 | Polkit Policy | `data/io.github.firststeps.policy` |
 | Install Script | `install.sh` |
 | .deb Build Script | `packaging/build-deb.sh` |
 | Online Installer | `scripts/install-online.sh` |
+| Tests (50+) | `tests/` |
 
 To run from the source tree without installing:
 
@@ -108,4 +122,10 @@ To rebuild the .deb package:
 
 ```bash
 ./packaging/build-deb.sh
+```
+
+To run the test suite:
+
+```bash
+python3 -m pytest tests/ -v
 ```
