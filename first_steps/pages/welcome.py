@@ -1,15 +1,101 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali
-"""Welcome page — the landing screen for the onboarding wizard."""
+# Copyright 2026 Naftali Rosen
+"""Welcome page — landing screen with system info and setup overview."""
+
+import os
+import platform
+import subprocess
 
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, GLib, Gtk
 
 from first_steps.pages import BasePage
+
+
+def _read_file(path: str) -> str:
+    """Read a file and return its stripped content, or empty string."""
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def _run_cmd(cmd: list[str]) -> str:
+    """Run a command and return stdout, or empty string on failure."""
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        return r.stdout.strip() if r.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
+def _get_system_info() -> dict:
+    """Gather system information in a background-safe way."""
+    info = {}
+
+    # OS
+    os_release = _read_file("/etc/os-release")
+    for line in os_release.splitlines():
+        if line.startswith("PRETTY_NAME="):
+            info["os"] = line.split("=", 1)[1].strip('"')
+            break
+    if "os" not in info:
+        info["os"] = platform.platform()
+
+    # Desktop environment
+    info["desktop"] = os.environ.get("XDG_CURRENT_DESKTOP", "Unknown")
+
+    # Kernel
+    info["kernel"] = platform.release()
+
+    # CPU
+    cpu_info = _read_file("/proc/cpuinfo")
+    for line in cpu_info.splitlines():
+        if line.startswith("model name"):
+            info["cpu"] = line.split(":", 1)[1].strip()
+            break
+    if "cpu" not in info:
+        info["cpu"] = platform.processor() or "Unknown"
+
+    # GPU — try lspci
+    lspci = _run_cmd(["lspci"])
+    gpus = []
+    for line in lspci.splitlines():
+        low = line.lower()
+        if "vga" in low or "3d" in low or "display" in low:
+            # Extract the device name after the colon
+            parts = line.split(": ", 1)
+            if len(parts) > 1:
+                gpus.append(parts[1].strip())
+    info["gpu"] = gpus[0] if gpus else "Unknown"
+    if len(gpus) > 1:
+        info["gpu"] += f" (+{len(gpus) - 1} more)"
+
+    # RAM
+    mem = _read_file("/proc/meminfo")
+    for line in mem.splitlines():
+        if line.startswith("MemTotal:"):
+            kb = int(line.split()[1])
+            info["ram"] = f"{round(kb / 1048576, 1)} GB"
+            break
+    if "ram" not in info:
+        info["ram"] = "Unknown"
+
+    # Disk — root partition
+    try:
+        st = os.statvfs("/")
+        total = st.f_frsize * st.f_blocks
+        avail = st.f_frsize * st.f_bavail
+        info["disk"] = f"{round(avail / 1073741824, 1)} GB free of {round(total / 1073741824, 1)} GB"
+    except OSError:
+        info["disk"] = "Unknown"
+
+    return info
 
 
 class WelcomePage(BasePage):
@@ -34,11 +120,11 @@ class WelcomePage(BasePage):
         title_label.set_margin_bottom(4)
         self._outer_box.append(title_label)
 
-        # ── Description — full-width inline text, no subscroll ───────
+        # ── Description ─────────────────────────────────────────────
         desc_text = (
             "Your system is almost ready. This wizard will help you "
             "install media codecs, set up Flatpak, detect drivers, "
-            "configure backups, and more — all without touching a "
+            "configure backups, and more \u2014 all without touching a "
             "terminal.\n\n"
             "Work through each section at your own pace using the "
             "sidebar, or skip anything you don't need. Everything "
@@ -55,14 +141,42 @@ class WelcomePage(BasePage):
         desc_label.set_margin_bottom(8)
         self._outer_box.append(desc_label)
 
+        # ── System info card ─────────────────────────────────────────
+        self._sysinfo_group = self.add_preferences_group(
+            "Your System",
+            "Detected hardware and software:"
+        )
+
+        # Placeholder rows — will be populated async
+        self._sysinfo_rows = {}
+        fields = [
+            ("computer-symbolic", "os", "Operating System", "Detecting..."),
+            ("desktop-symbolic", "desktop", "Desktop Environment", "Detecting..."),
+            ("processor-symbolic", "cpu", "Processor", "Detecting..."),
+            ("video-display-symbolic", "gpu", "Graphics", "Detecting..."),
+            ("memory-symbolic", "ram", "Memory", "Detecting..."),
+            ("drive-harddisk-symbolic", "disk", "Disk Space", "Detecting..."),
+            ("system-run-symbolic", "kernel", "Kernel", "Detecting..."),
+        ]
+        for icon_name, key, title, subtitle in fields:
+            row = Adw.ActionRow()
+            row.set_title(title)
+            row.set_subtitle(subtitle)
+            row.add_prefix(Gtk.Image.new_from_icon_name(icon_name))
+            self._sysinfo_group.add(row)
+            self._sysinfo_rows[key] = row
+
+        # Fetch system info in background
+        import threading
+        threading.Thread(target=self._load_sysinfo, daemon=True).start()
+
         # ── Separator ────────────────────────────────────────────────
         sep = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         sep.set_margin_top(4)
         sep.set_margin_bottom(4)
         self._outer_box.append(sep)
 
-        # ── Quick overview — inline cards, all part of the same
-        #    scroll as the rest of the page ───────────────────────────
+        # ── Quick overview ───────────────────────────────────────────
         overview_title = Gtk.Label(label="What We Can Help You Set Up")
         overview_title.add_css_class("title-3")
         overview_title.set_halign(Gtk.Align.START)
@@ -80,7 +194,6 @@ class WelcomePage(BasePage):
         overview_desc.set_margin_bottom(8)
         self._outer_box.append(overview_desc)
 
-        # Build the overview items as a PreferencesGroup for clean styling
         group = Adw.PreferencesGroup()
         self._outer_box.append(group)
 
@@ -99,6 +212,14 @@ class WelcomePage(BasePage):
              "Configure power profiles and lid behavior"),
             ("security-high-symbolic", "Firewall",
              "Enable and configure UFW firewall"),
+            ("network-wired-symbolic", "Network",
+             "DNS, connectivity checks, and speed testing"),
+            ("security-medium-symbolic", "Privacy",
+             "Disable telemetry and harden privacy settings"),
+            ("utilities-terminal-symbolic", "Development",
+             "Set up Git, editors, Docker, and dev tools"),
+            ("preferences-desktop-locale-symbolic", "Language",
+             "Install language packs and input methods"),
             ("applications-utilities-symbolic", "Extras",
              "Theme switcher, system updates, and more"),
         ]
@@ -108,7 +229,6 @@ class WelcomePage(BasePage):
             row.set_title(row_title)
             row.set_subtitle(subtitle)
             row.add_prefix(Gtk.Image.new_from_icon_name(icon_name))
-            # Add a go-next indicator to hint these are navigable sections
             arrow = Gtk.Image.new_from_icon_name("go-next-symbolic")
             arrow.add_css_class("dim-label")
             row.add_suffix(arrow)
@@ -134,3 +254,14 @@ class WelcomePage(BasePage):
         ver_label.set_margin_top(4)
         ver_label.set_margin_bottom(8)
         self._outer_box.append(ver_label)
+
+    def _load_sysinfo(self) -> None:
+        """Load system info in a background thread, then update UI."""
+        info = _get_system_info()
+
+        def _update():
+            for key, row in self._sysinfo_rows.items():
+                value = info.get(key, "Unknown")
+                row.set_subtitle(value)
+
+        GLib.idle_add(_update)
