@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali
+# Copyright 2026 Naftali Rosen
 """Tests for the privileged helper script argument validation.
 
 These tests verify the helper script's argument parsing and validation

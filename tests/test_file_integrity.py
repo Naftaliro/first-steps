@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali
+# Copyright 2026 Naftali Rosen
 """Tests for file integrity, license headers, and project structure.
 
 These tests verify that all source files have proper license headers,
@@ -80,6 +80,10 @@ class TestProjectStructure:
         "first_steps/pages/timeshift.py",
         "first_steps/pages/power.py",
         "first_steps/pages/firewall.py",
+        "first_steps/pages/network.py",
+        "first_steps/pages/privacy.py",
+        "first_steps/pages/development.py",
+        "first_steps/pages/language.py",
         "first_steps/pages/extras.py",
         "first_steps/pages/summary.py",
         "scripts/first-steps-helper",

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright 2026 Naftali
+# Copyright 2026 Naftali Rosen
 """Tests for project metadata and module structure."""
 
 import importlib
