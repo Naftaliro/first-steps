@@ -79,13 +79,13 @@ class FirstStepsApp(Adw.Application):
             transient_for=self.props.active_window,
             application_name="First Steps",
             application_icon="io.github.firststeps",
-            developer_name="Naftali Rosen",
+            developer_name="Mitchell Berg",
             version=__version__,
             website="https://github.com/Naftaliro/first-steps",
             issue_url="https://github.com/Naftaliro/first-steps/issues",
             license_type=Gtk.License.GPL_3_0,
-            copyright="Copyright 2026 Naftali Rosen",
-            developers=["Naftali Rosen"],
+            copyright="Copyright 2026 Mitchell Berg",
+            developers=["Mitchell Berg"],
         )
         about.add_link("Buy Me a Coffee \u2615", "https://buymeacoffee.com/naftali")
         about.present()
