@@ -1,130 +1,91 @@
-# First Steps — Onboarding Wizard for Zorin OS
+# first steps
 
-A GTK4 + LibAdwaita onboarding wizard for Zorin OS 18 and other Ubuntu-based systems. Think of it like a welcome wizard that actually *does things*, not just shows links. Clean, checkbox-driven interface for everything you need on a fresh install.
+a setup wizard for zorin os 18 and other ubuntu based distros. it doesn't just show you links, it actually does the stuff: codecs, flathub, drivers, backups, firewall and more, all with checkboxes so new linux people never have to open a terminal.
 
----
+built with python, gtk4 and libadwaita.
 
-## Installation
+## install
 
-### One-Liner Install (Recommended)
-
-Paste this into a terminal and you're done:
+one line:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Naftaliro/first-steps/main/scripts/install-online.sh | sudo bash
 ```
 
-This automatically installs all dependencies, downloads the latest release, **verifies its SHA-256 checksum**, and sets everything up. To uninstall: `sudo apt remove first-steps`.
+that installs the dependencies, downloads the latest release, checks its sha256, and sets it up. to remove it: `sudo apt remove first-steps`.
 
-### Download the .deb Package
-
-Grab the `.deb` from the [Releases page](https://github.com/Naftaliro/first-steps/releases/latest) and double-click it, or install the latest version from the terminal:
+or grab the `.deb` from [releases](https://github.com/Naftaliro/first-steps/releases/latest) and double click it. from a terminal:
 
 ```bash
-# Automatically download the latest .deb from GitHub Releases
 DEB_URL=$(curl -fsSL https://api.github.com/repos/Naftaliro/first-steps/releases/latest \
   | grep -o '"browser_download_url"[^"]*\.deb"' | grep -o 'https://[^"]*')
 wget "$DEB_URL" -O first-steps-latest.deb
 sudo apt install ./first-steps-latest.deb
 ```
 
-### Install from Source
+or from source:
 
 ```bash
 git clone https://github.com/Naftaliro/first-steps.git
 cd first-steps
-sudo ./install.sh
+sudo ./install.sh          # sudo ./install.sh remove to uninstall
 ```
 
-To uninstall: `sudo ./install.sh remove`
+## the pages
 
----
+| page | what it does |
+|---|---|
+| welcome | your system info (os, cpu, gpu, ram, disk) and an overview |
+| codecs & media | `ubuntu-restricted-extras`, gstreamer plugins, dvd support, va-api |
+| flatpak & apps | turns on flathub, then pick from 16 apps (media, productivity, internet, gaming, dev) |
+| drivers | runs `ubuntu-drivers`, shows what's recommended, one click install |
+| windows apps | installs bottles, optional wine stuff + gamemode, helps you make your first bottle |
+| backup | sets up timeshift: schedule, how many to keep, skip home, first snapshot |
+| power | power profile, what the lid does on ac / battery, auto suspend, screen dimming |
+| firewall | turns on ufw (deny incoming, allow outgoing) with 8 common exceptions |
+| network | connectivity check, dns (cloudflare / google / quad9), network tools |
+| privacy | turns off ubuntu telemetry, whoopsie and popularity-contest, gnome privacy settings, browser extension picks |
+| development | git config, editors (vs code / codium / zed and more), docker / podman, language runtimes, dev tools |
+| language | language packs, input methods (ibus / fcitx5), spell check, fonts (noto / fira / cascadia) |
+| extras | theme switcher, theme packs, system update, accessibility, utilities |
+| summary | everything you did, what to do next, and you can export it as a markdown report |
 
-## Features
+other stuff:
 
-### Setup Pages (14 total)
+- dark / light toggle (ctrl+d)
+- checkmarks in the sidebar for pages you've finished
+- skip button on every page if you already did something yourself
+- ctrl+1-0 to jump between pages, ctrl+q to quit
+- checks github for updates when it opens
+- a little popup after every action saying if it worked
+- uses `pkexec` with its own polkit policy, so it's one password prompt and no terminal
+- installs run in the background with a spinner so the window doesn't freeze
 
-| Page | What It Does |
-|------|-------------|
-| **Welcome** | System info card (OS, CPU, GPU, RAM, disk), overview of all sections |
-| **Codecs & Media** | One-click install of `ubuntu-restricted-extras`, GStreamer plugins (good/bad/ugly/libav), DVD support, VA-API |
-| **Flatpak & Apps** | Detects/enables Flathub, curated picker of 16 apps across Media, Productivity, Internet, Gaming, Development |
-| **Drivers** | Wraps `ubuntu-drivers devices` — scans hardware, shows recommended flags, one-click install |
-| **Windows Apps** | Installs Bottles via Flatpak, optional Wine deps + GameMode, guided first-bottle creation |
-| **Backup** | Installs + configures Timeshift — schedule toggles, retention spinners, home exclusion, first snapshot |
-| **Power** | Power profile dropdown, lid behavior for AC/battery, auto-suspend timeouts, screen dim toggle |
-| **Firewall** | Enables UFW with deny-incoming/allow-outgoing defaults, 8 common service exceptions |
-| **Network** | Connectivity check (HTTP/DNS/latency), DNS configuration (Cloudflare/Google/Quad9), network tools installer |
-| **Privacy** | Disable Ubuntu telemetry/Whoopsie/popularity-contest, GNOME privacy settings, browser extension recommendations |
-| **Development** | Git identity config, code editor installer (VS Code/Codium/Zed/etc.), Docker/Podman, language runtimes, dev utilities |
-| **Language** | Language packs (12 languages), input methods (IBus/Fcitx5), spell-check dictionaries, font installer (Noto/Fira/Cascadia) |
-| **Extras** | Theme Switcher installer, theme packs, system update, accessibility toggles, utility installer |
-| **Summary** | Live recap of all actions + export setup report as Markdown + recommended next steps |
+## working on it
 
-### UX Features
+it's python with pygobject (gtk4 + libadwaita).
 
-| Feature | Details |
-|---------|---------|
-| **Dark/Light Mode Toggle** | One-click toggle in the header bar (Ctrl+D) |
-| **Sidebar Progress Indicators** | Green checkmarks appear next to completed sections |
-| **Skip / "I've Done This"** | Every page has a skip button for power users who've already configured things |
-| **Keyboard Shortcuts** | Ctrl+1–0 for page navigation, Ctrl+Q to quit, Ctrl+D for dark mode |
-| **Export Setup Report** | Save a Markdown report of everything configured during the session |
-| **Auto-Update** | Checks GitHub Releases on launch, offers one-click in-app upgrade |
-| **Toast Notifications** | Every action shows success/failure feedback via in-app toasts |
-| **Privileged Operations** | Uses `pkexec` with a dedicated polkit policy — one auth prompt, no terminal |
-| **Async Execution** | All installs run in background threads with spinner feedback |
-
----
-
-## Legal & Licensing
-
-This project is licensed under the **GNU General Public License v3.0 or later**.
-
-- A copy of the license is available in the [LICENSE](LICENSE) file.
-- The application icon is original work created for this project and is also licensed under GPL-3.0-or-later.
-- This project is not affiliated with or endorsed by Zorin Group. All branding is original to "First Steps" to avoid trademark infringement.
-- For a full list of dependencies and their licenses, see the [NOTICE](NOTICE) file.
-
-## Security
-
-The one-liner installer verifies SHA-256 checksums before installing. To report a security vulnerability, please see [SECURITY.md](SECURITY.md) for responsible disclosure instructions.
-
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on reporting bugs, suggesting features, and submitting code.
-
-## Development
-
-The application is written in Python using the PyGObject bindings for GTK4 and Libadwaita.
-
-| Component | Path |
-|-----------|------|
-| Main Application | `first_steps/app.py` |
-| Auto-Update Module | `first_steps/updater.py` |
-| UI Pages (14) | `first_steps/pages/` |
-| Base Page Class | `first_steps/pages/__init__.py` |
-| Privileged Helper | `scripts/first-steps-helper` |
-| Polkit Policy | `data/io.github.firststeps.policy` |
-| Install Script | `install.sh` |
-| .deb Build Script | `packaging/build-deb.sh` |
-| Online Installer | `scripts/install-online.sh` |
-| Tests (50+) | `tests/` |
-
-To run from the source tree without installing:
+| what | where |
+|---|---|
+| main app | `first_steps/app.py` |
+| updater | `first_steps/updater.py` |
+| the 14 pages | `first_steps/pages/` |
+| base page class | `first_steps/pages/__init__.py` |
+| root helper | `scripts/first-steps-helper` |
+| polkit policy | `data/io.github.firststeps.policy` |
+| installer | `install.sh` |
+| online installer | `scripts/install-online.sh` |
+| .deb build | `packaging/build-deb.sh` |
+| tests | `tests/` |
 
 ```bash
-./first-steps
+./first-steps                        # run it from the source folder
+./packaging/build-deb.sh             # build the .deb
+python3 -m pytest tests/ -v          # run the tests
 ```
 
-To rebuild the .deb package:
+found a bug or want something added? see [CONTRIBUTING.md](CONTRIBUTING.md). security stuff goes through [SECURITY.md](SECURITY.md).
 
-```bash
-./packaging/build-deb.sh
-```
+## license
 
-To run the test suite:
-
-```bash
-python3 -m pytest tests/ -v
-```
+GPL-3.0-or-later, see [LICENSE](LICENSE). the icon was made for this project and is under the same license. dependencies and their licenses are listed in [NOTICE](NOTICE). not affiliated with or endorsed by zorin group.
