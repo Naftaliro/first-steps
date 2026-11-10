@@ -4,24 +4,32 @@ a setup wizard for zorin os 18 and other ubuntu based distros. it doesn't just s
 
 built with python, gtk4 and libadwaita.
 
+<!-- screenshots: drop the images in docs/screenshots/ and take away the comment markers around these
+![welcome page](docs/screenshots/welcome.png)
+![picking what to set up](docs/screenshots/pages.png)
+-->
+
 ## install
 
-one line:
+download the `.deb`, check it, then install it. nothing gets piped into sudo this way:
+
+```bash
+wget https://github.com/Naftaliro/first-steps/releases/latest/download/SHA256SUMS
+DEB=$(grep -o 'first-steps_[^ ]*\.deb' SHA256SUMS)
+wget "https://github.com/Naftaliro/first-steps/releases/latest/download/$DEB"
+sha256sum -c SHA256SUMS
+sudo apt install "./$DEB"
+```
+
+`sha256sum -c` should print `OK`. if it doesn't, don't install it. you can also grab the `.deb` from [releases](https://github.com/Naftaliro/first-steps/releases/latest) and double click it.
+
+or in one line, if you trust it:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Naftaliro/first-steps/main/scripts/install-online.sh | sudo bash
 ```
 
 that installs the dependencies, downloads the latest release, checks its sha256, and sets it up. to remove it: `sudo apt remove first-steps`.
-
-or grab the `.deb` from [releases](https://github.com/Naftaliro/first-steps/releases/latest) and double click it. from a terminal:
-
-```bash
-DEB_URL=$(curl -fsSL https://api.github.com/repos/Naftaliro/first-steps/releases/latest \
-  | grep -o '"browser_download_url"[^"]*\.deb"' | grep -o 'https://[^"]*')
-wget "$DEB_URL" -O first-steps-latest.deb
-sudo apt install ./first-steps-latest.deb
-```
 
 or from source:
 
